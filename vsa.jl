@@ -12,6 +12,12 @@ function bundle(x::AbstractMatrix; dims)
     return y
 end
 
+function bundle_project(x::AbstractMatrix, w::AbstractMatrix, b::AbstractVecOrMat)
+    xz = angle_to_complex(x) * w .+ b
+    y = complex_to_angle(xz)
+    return y
+end
+
 function bind(x::AbstractMatrix; dims)
     bz = sum(x, dims = dims)
     y = remap_phase(bz)
@@ -24,7 +30,7 @@ function bind(x::AbstractMatrix, y::AbstractMatrix; dims)
 end
 
 function complex_to_angle(x::AbstractVecOrMat)
-    return angle.(x) / pi
+    return angle.(x) ./ pi
 end
 
 function random_symbols(size::Tuple{Vararg{Int}})

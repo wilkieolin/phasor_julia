@@ -1,46 +1,37 @@
 using Functors
 using Flux: glorot_uniform
 
-function atan2_normal(x::AbstractVecOrMat)
-    return angle.(x) ./ pi
-end
+include("vsa.jl")
 
 struct PhasorDense{M<:AbstractMatrix, B}
     weight::M
     bias::B
 
-    function PhasorDense(W::M, bias = true) where {M<:AbstractMatrix}
-      if bias
-        b = ones(ComplexF32, size(W,1))
-      else
-        b = zeros(ComplexF32, size(W,1))
-      end
-
+    function PhasorDense(W::M, b::B) where {M<:AbstractMatrix, B<:AbstractVector}
       new{M,typeof(b)}(W, b)
     end
-  end
+end
   
-  function PhasorDense((in, out)::Pair{<:Integer, <:Integer};
-                 init = glorot_uniform, bias = true)
+function PhasorDense(W::AbstractMatrix)
+    b = ones(ComplexF32, size(W,1))
+    return PhasorDense(W, b)
+end
+
+function PhasorDense((in, out)::Pair{<:Integer, <:Integer};
+                init = glorot_uniform)
 
     w = convert(Matrix{ComplexF32}, init(out, in))
-    PhasorDense(w, bias)
-  end
+    PhasorDense(w)
+end
 
-  @functor PhasorDense
-  
-  function (a::PhasorDense)(x::AbstractVecOrMat)
+@functor PhasorDense
 
-    #convert angles to complex
-    k = convert(ComplexF32, pi * (0.0 + 1.0im))
-    xz = a.weight * exp.(k .* x') .+ a.bias
-    y = atan2_normal(xz) 
-
+function (a::PhasorDense)(x::AbstractVecOrMat)
+    y = bundle_project(x, a.weight', a.bias')
     return y
-  end
-  
-  function Base.show(io::IO, l::PhasorDense)
+end
+
+function Base.show(io::IO, l::PhasorDense)
     print(io, "PhasorDense(", size(l.weight, 2), " => ", size(l.weight, 1))
-    l.bias == false && print(io, "; bias=false")
     print(io, ")")
-  end
+end
