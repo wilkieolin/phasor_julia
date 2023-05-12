@@ -2,6 +2,7 @@ using Functors
 using Flux: glorot_uniform
 
 include("vsa.jl")
+include("spiking.jl")
 
 struct PhasorDense{M<:AbstractMatrix, B}
     weight::M
@@ -28,6 +29,11 @@ end
 
 function (a::PhasorDense)(x::AbstractVecOrMat)
     y = bundle_project(x, a.weight', a.bias')
+    return y
+end
+
+function (a::PhasorDense)(x::SpikeTrain, spk_args::SpikingArgs)
+    y = bundle_project(x, spk_args)
     return y
 end
 
