@@ -1,5 +1,7 @@
 using Statistics: mean
 
+include("spiking.jl")
+
 function angle_to_complex(x::AbstractVecOrMat)
     k = convert(ComplexF32, pi * (0.0 + 1.0im))
     return exp.(k .* x)
@@ -16,6 +18,11 @@ function bundle_project(x::AbstractMatrix, w::AbstractMatrix, b::AbstractVecOrMa
     xz = angle_to_complex(x) * w .+ b
     y = complex_to_angle(xz)
     return y
+end
+
+function bundle_project(x::SpikeTrain, spk_args::SpikingArgs)
+    #TODO
+    return
 end
 
 function bind(x::AbstractMatrix; dims)
