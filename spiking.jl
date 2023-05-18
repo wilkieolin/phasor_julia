@@ -1,3 +1,5 @@
+using DifferentialEquations: ODESolution
+
 struct SpikeTrain
     indices::Array{<:Int,1}
     times::Array{<:Real,1}
@@ -11,6 +13,15 @@ struct SpikingArgs
     t_period::Real
     t_window::Real
     threshold::Real
+end
+
+function default_spk_args()
+    args = SpikingArgs(2.0 * pi,
+                    -0.2,
+                    1.0,
+                    0.03,
+                    0.05)
+    return args
 end
 
 function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
@@ -84,4 +95,51 @@ end
 function find_spikes(sol, offset::Real, spk_args::SpikingArgs)
     #TODO
     return
+end
+
+function phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs, repeats::Int = 1, offset::Real = 0.0)
+    t_phase0 = spk_args.t_period / 2.0
+    shape = phases |> size
+
+    phases = phases |> vec
+
+    indices = collect(1:length(phases))
+    times = phases .* t_phase0 .+ t_phase0
+
+    if repeats > 1
+        n_t = times |> length
+        offsets = repeat(0:repeats-1, inner=n_t)
+        times = repeat(times, repeats) .+ offsets
+        indices = repeat(indices, repeats)
+    end
+
+    train = SpikeTrain(indices, times, shape, offset)
+    return train
+end
+
+function time_to_phase(times::AbstractVecOrMat, period::Real, offset::Real)
+    times = (times .- offset) .% period
+    times = (times .- 0.5) .* 2.0
+    return times
+end
+
+function train_to_phase(train::SpikeTrain, spk_args::SpikingArgs)
+    if length(train.times) == 0
+        return missing
+    end
+
+    phases_vec = time_to_phase(train.times, spk_args.t_period, train.offset)
+    n_cycles = maximum(train.times) ÷ spk_args.t_period + 1
+    cycle = floor.(Int, train.times .÷ spk_args.t_period .+ 1)
+    phases = [NaN .* zeros(train.shape...) for i in 1:n_cycles]
+
+    for i in eachindex(phases_vec)
+        phases[cycle[i]][train.indices[i]] = phases_vec[i]
+    end
+
+    #stack the arrays
+    phases = mapreduce(x->reshape(x, 1, st.shape...), vcat, phases)
+    phases = permutedims(phases, (2, 3, 1))
+    return phases
+
 end
