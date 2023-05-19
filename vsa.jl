@@ -20,9 +20,14 @@ function bundle_project(x::AbstractMatrix, w::AbstractMatrix, b::AbstractVecOrMa
     return y
 end
 
-function bundle_project(x::SpikeTrain, spk_args::SpikingArgs)
-    #TODO
-    return
+function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstracVecOrMat, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs)
+    k = (spk_args.leakage + 1im * spk_args.angular_frequency)
+    dzdt(u, p, t) = k .* u .+ spike_current(x, t, spk_args) * w .+ bias_current(b, t, x.offset, spk_args)
+    u0 = zeros(ComplexF32, x.shape...)
+    prob = ODEProblem(dzdt, u0, tspan)
+    sol = solve(prob, Heun(), adaptive=false, dt=0.01)
+    train = find_spikes_rf(sol, spk_args)
+    return train
 end
 
 function bind(x::AbstractMatrix; dims)
