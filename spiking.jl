@@ -30,43 +30,6 @@ function default_spk_args()
     return args
 end
 
-function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
-    t = sol.t
-    u = sol.u
-
-    @assert typeof(sol.u) <: Vector{<:Matrix{<:Complex}} "This method is for R&F neurons with complex potential"
-    #if potential is from an R&F neuron, it is complex and voltage is the imaginary part
-    voltage = imag.(u)
-    current = real.(u)
-
-    #convert vector of matrices to 2D matrix
-    function rearrange_sol(x)
-        x = reshape(reduce(vcat, x), (axes(sol.u, 1), axes(sol.t, 1), axes(sol.u, 2)))
-        x = permutedims(x, (2, 1, 3))
-        return x
-    end
-    
-    voltage = rearrange_sol(voltage)
-    current = rearrange_sol(current)
-
-    #find the local voltage maxima through the first derivative (current)
-    maxima = findall(diff(sign.(current), dims=1) .< 0)
-    zero_i = current[maxima]
-    peak_voltages = voltage[maxima]
-    #return maxima, peak_voltages
-    #check voltages at these peaks are above the threshold
-    above_threshold = peak_voltages .> spk_args.threshold
-    spikes = maxima[above_threshold]
-
-    #retrieve the indices of the spiking neurons
-    channels = getindex.(spikes, 2)
-    #retrieve the times they spiked at
-    times = t[getindex.(spikes, 1)]
-    
-    return channels, times
-
-end
-
 function spike_current(train::SpikeTrain, t::Real, spk_args::SpikingArgs)
     #get constants
     t_window = spk_args.t_window
@@ -103,7 +66,7 @@ function bias_current(bias::AbstractVecOrMat, t::Real, t_offset::Real, spk_args:
     return current
 end
 
-function find_spikes_rf(sol::ODESolution, offset::Real, spk_args::SpikingArgs)
+function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
     t = sol.t
     u = sol.u
 
@@ -111,11 +74,11 @@ function find_spikes_rf(sol::ODESolution, offset::Real, spk_args::SpikingArgs)
     #if potential is from an R&F neuron, it is complex and voltage is the imaginary part
     voltage = imag.(u)
     current = real.(u)
-    shape = size(sol.u[1])
 
     #convert vector of matrices to 2D matrix
     function rearrange_sol(x)
-        x = reshape(reduce(vcat, x), (shape[1], axes(sol.t, 1), shape[2]))
+        #rearrange to (time, batch, neuron)
+        x = reshape(reduce(vcat, x), (axes(sol.u[1], 1), axes(sol.t, 1), axes(sol.u[1], 2)))
         x = permutedims(x, (2, 1, 3))
         return x
     end
@@ -136,10 +99,8 @@ function find_spikes_rf(sol::ODESolution, offset::Real, spk_args::SpikingArgs)
     channels = getindex.(spikes, 2)
     #retrieve the times they spiked at
     times = t[getindex.(spikes, 1)]
-    new_offset = offset + spk_args.t_period / 4
-
-    train = SpikeTrain(channels, times, shape, new_offset)
-    return train
+    
+    return channels, times
 
 end
 
