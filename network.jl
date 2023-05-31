@@ -28,12 +28,12 @@ end
 @functor PhasorDense
 
 function (a::PhasorDense)(x::AbstractVecOrMat)
-    y = bundle_project(x, a.weight', a.bias')
+    y = bundle_project(x, a.weight', a.bias)
     return y
 end
 
-function (a::PhasorDense)(x::SpikeTrain, spk_args::SpikingArgs)
-    y = bundle_project(x, spk_args)
+function (a::PhasorDense)(x::SpikingCall)
+    y = bundle_project(x.input, a.weight', a.bias, x.t_span, x.spk_args)
     return y
 end
 

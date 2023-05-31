@@ -1,4 +1,5 @@
 using Statistics: mean
+using DifferentialEquations
 
 include("spiking.jl")
 
@@ -15,18 +16,22 @@ function bundle(x::AbstractMatrix; dims)
 end
 
 function bundle_project(x::AbstractMatrix, w::AbstractMatrix, b::AbstractVecOrMat)
-    xz = angle_to_complex(x) * w .+ b
+    xz = angle_to_complex(x) * w .+ b'
     y = complex_to_angle(xz)
     return y
 end
 
-function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstracVecOrMat, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs)
+function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs)
+    #set up functions to define the neuron's differential equations
     k = (spk_args.leakage + 1im * spk_args.angular_frequency)
-    dzdt(u, p, t) = k .* u .+ spike_current(x, t, spk_args) * w .+ bias_current(b, t, x.offset, spk_args)
-    u0 = zeros(ComplexF32, x.shape...)
+    u0 = zeros(ComplexF32, (st.shape[1], axes(w, 2)))
+    dzdt(u, p, t) = k .* u + spike_current(x, t, spk_args) * w .+ bias_current(b, t, x.offset, spk_args)'
+    #solve the ODE over the given time span
     prob = ODEProblem(dzdt, u0, tspan)
     sol = solve(prob, Heun(), adaptive=false, dt=0.01)
+    #convert the full solution (potentials) to spikes
     train = find_spikes_rf(sol, spk_args)
+
     return train
 end
 
