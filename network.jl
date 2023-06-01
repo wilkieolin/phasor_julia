@@ -33,7 +33,7 @@ function (a::PhasorDense)(x::AbstractVecOrMat)
 end
 
 function (a::PhasorDense)(x::SpikingCall)
-    y = bundle_project(x.input, a.weight', a.bias, x.t_span, x.spk_args)
+    y = bundle_project(x.train, a.weight', a.bias, x.t_span, x.spk_args)
     return y
 end
 

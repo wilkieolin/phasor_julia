@@ -1,7 +1,7 @@
 using DifferentialEquations: ODESolution
 
 struct SpikeTrain
-    indices::Array{<:Int,1}
+    indices::Array{<:Union{Int, CartesianIndex},1}
     times::Array{<:Real,1}
     shape::Tuple
     offset::Real
@@ -16,7 +16,7 @@ struct SpikingArgs
 end
 
 struct SpikingCall
-    input::SpikeTrain
+    train::SpikeTrain
     spk_args::SpikingArgs
     t_span::Tuple{<:Real, <:Real}
 end
@@ -96,7 +96,9 @@ function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
     spikes = maxima[above_threshold]
 
     #retrieve the indices of the spiking neurons
-    channels = getindex.(spikes, 2)
+    batch = getindex.(spikes, 2)
+    neuron = getindex.(spikes, 3)
+    channels = CartesianIndex.(batch, neuron)
     #retrieve the times they spiked at
     times = t[getindex.(spikes, 1)]
     
@@ -112,11 +114,8 @@ phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs, repeats::Int = 1, 
 function phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs, repeats::Int = 1, offset::Real = 0.0)
     t_phase0 = spk_args.t_period / 2.0
     shape = phases |> size
-
-    phases = phases |> vec
-
-    indices = collect(1:length(phases))
-    times = phases .* t_phase0 .+ t_phase0
+    indices = collect(CartesianIndices(shape)) |> vec
+    times = phases .* t_phase0 .+ t_phase0 |> vec
 
     if repeats > 1
         n_t = times |> length
@@ -149,9 +148,8 @@ function train_to_phase(train::SpikeTrain, spk_args::SpikingArgs)
         phases[cycle[i]][train.indices[i]] = phases_vec[i]
     end
 
-    #stack the arrays
-    phases = mapreduce(x->reshape(x, 1, st.shape...), vcat, phases)
-    phases = permutedims(phases, (2, 3, 1))
+    #stack the arrays to cycle, batch, neuron
+    phases = mapreduce(x->reshape(x, 1, train.shape...), vcat, phases)
     return phases
 
 end
