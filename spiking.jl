@@ -181,3 +181,9 @@ end
 function train_to_phase(call::SpikingCall)
     return train_to_phase(call.train, call.spk_args)
 end
+
+function zero_nans(phases::AbstractArray)
+    nans = isnan.(phases)
+    phases[nans] .= 0.0
+    return phases
+end
