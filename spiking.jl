@@ -1,4 +1,5 @@
 using DifferentialEquations: ODESolution
+using Statistics: cor
 
 struct SpikeTrain
     indices::Array{<:Union{Int, CartesianIndex},1}
@@ -29,6 +30,22 @@ struct SpikingCall
     train::SpikeTrain
     spk_args::SpikingArgs
     t_span::Tuple{<:Real, <:Real}
+end
+
+function cor_realvals(x, y)
+    is_real = x -> .!isnan.(x)
+    x_real = is_real(x)
+    y_real = is_real(y)
+    reals = x_real .* y_real
+    
+    cor_val = cor(x[reals], y[reals])
+    return cor_val
+end
+
+function cycle_correlation(static_phases::Matrix{<:Real}, dynamic_phases::Array{<:Real,3})
+    n_cycles = axes(dynamic_phases, 1)
+    cor_vals = [cor_realvals(static_phases |> vec, dynamic_phases[i,:,:] |> vec) for i in n_cycles]
+    return cor_vals
 end
 
 function default_spk_args()

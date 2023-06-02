@@ -14,14 +14,14 @@ struct PhasorDense{M<:AbstractMatrix, B}
 end
   
 function PhasorDense(W::AbstractMatrix)
-    b = ones(ComplexF32, size(W,1))
+    b = ones(axes(W,1))
     return PhasorDense(W, b)
 end
 
 function PhasorDense((in, out)::Pair{<:Integer, <:Integer};
                 init = glorot_uniform)
 
-    w = convert(Matrix{ComplexF32}, init(out, in))
+    w = init(out, in)
     PhasorDense(w)
 end
 
