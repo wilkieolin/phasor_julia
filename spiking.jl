@@ -136,7 +136,7 @@ function phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs; repeats::
 end
 
 function time_to_phase(times::AbstractVecOrMat, period::Real, offset::Real)
-    times = (times .- offset) .% period
+    times = mod.((times .- offset), period)
     times = (times .- 0.5) .* 2.0
     return times
 end
