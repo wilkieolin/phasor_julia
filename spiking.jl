@@ -7,12 +7,22 @@ struct SpikeTrain
     offset::Real
 end
 
+function Base.show(io::IO, train::SpikeTrain)
+    print(io, "Spike Train: ", train.shape, " with ", length(train.times), " spikes.")
+end
+
 struct SpikingArgs
     angular_frequency::Real
     leakage::Real
     t_period::Real
     t_window::Real
     threshold::Real
+end
+
+function Base.show(io::IO, spk_args::SpikingArgs)
+    print(io, "Neuron parameters: Period ", spk_args.t_period, " (s)\n")
+    print(io, "Current kernel duration: ", spk_args.t_window, " (s)\n")
+    print(io, "Threshold: ", spk_args.threshold, " (V)\n")
 end
 
 struct SpikingCall
@@ -26,7 +36,7 @@ function default_spk_args()
                     -0.2,
                     1.0,
                     0.03,
-                    0.05)
+                    0.02)
     return args
 end
 
@@ -49,21 +59,18 @@ end
 
 function bias_current(bias::AbstractVecOrMat, t::Real, t_offset::Real, spk_args::SpikingArgs)
     #get constants
-    t_period = spk_args.t_period
+    t_bias = spk_args.t_period / 2.0
     t_window = spk_args.t_window
-    full_shape = bias |> size
-
     #determine the time within the cycle
-    t_relative = (t - t_offset) % t_period
-    #determine which inputs are ative
-    bias_relative = abs.(t_relative .- bias)
-    active_inds = bias_relative .< t_window
+    t_relative = (t - t_offset)
+    #determine if the bias is active
+    active = (t_relative > (t_bias - t_window)) && (t_relative < (t_bias + t_window))
 
-    #produce the resulting currents
-    current = zeros(ComplexF32, full_shape)
-    current[active_inds] .= 1.0 + 0.0im
-
-    return current
+    if active
+        return bias
+    else
+        return zero(bias)
+    end
 end
 
 function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
@@ -111,7 +118,7 @@ Converts a matrix of phases into a spike train via phase encoding
 
 phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs, repeats::Int = 1, offset::Real = 0.0)
 """
-function phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs, repeats::Int = 1, offset::Real = 0.0)
+function phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs; repeats::Int = 1, offset::Real = 0.0)
     t_phase0 = spk_args.t_period / 2.0
     shape = phases |> size
     indices = collect(CartesianIndices(shape)) |> vec
@@ -152,4 +159,8 @@ function train_to_phase(train::SpikeTrain, spk_args::SpikingArgs)
     phases = mapreduce(x->reshape(x, 1, train.shape...), vcat, phases)
     return phases
 
+end
+
+function train_to_phase(call::SpikingCall)
+    return train_to_phase(call.train, call.spk_args)
 end
