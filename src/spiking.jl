@@ -65,13 +65,15 @@ end
 
 function spike_current(train::SpikeTrain, t::Real, spk_args::SpikingArgs)
     #get constants
-    t_window = spk_args.t_window
+    t_window = spk_args.t_window + 1e-4
+    dt = spk_args.dt
 
     #determine which synapses will have incoming currents
-    times = train.times
-    relative_time = abs.(times .- t)
-    active = relative_time .< t_window
-    #active = (t .> (times .- t_window)) .* (t .< (times .+ t_window))
+    #snap spike times to the grid points
+    times = train.times .- mod.(train.times, dt)
+    active = (times .> (t - t_window)) .* (times .< (t + t_window))
+    # relative_time = abs.(times .- t)
+    # active = relative_time .<= t_window
     active_inds = train.indices[active]
 
     #add currents into the active synapses
@@ -86,7 +88,7 @@ function bias_current(bias::AbstractVecOrMat, t::Real, t_offset::Real, spk_args:
     t_bias = spk_args.t_period / 2.0
     t_window = spk_args.t_window
     #determine the time within the cycle
-    t_relative = (t - t_offset)
+    t_relative = mod((t - t_offset), spk_args.t_period)
     #determine if the bias is active
     active = (t_relative > (t_bias - t_window)) && (t_relative < (t_bias + t_window))
 
@@ -170,13 +172,17 @@ function train_to_phase(train::SpikeTrain, spk_args::SpikingArgs)
         return missing
     end
 
-    phases_vec = time_to_phase(train.times, spk_args.t_period, train.offset)
-    n_cycles = maximum(train.times) ÷ spk_args.t_period + 1
-    cycle = floor.(Int, train.times .÷ spk_args.t_period .+ 1)
+    #decode each spike's phase within a cycle
+    relative_phase = time_to_phase(train.times, spk_args.t_period, train.offset)
+    relative_time = train.times - train.offset
+    #what is the number of cycles in this train?
+    n_cycles = maximum(relative_time) ÷ spk_args.t_period + 1
+    #what is the cycle in which each spike occurs?
+    cycle = floor.(Int, relative_time .÷ spk_args.t_period .+ 1)
     phases = [NaN .* zeros(train.shape...) for i in 1:n_cycles]
 
-    for i in eachindex(phases_vec)
-        phases[cycle[i]][train.indices[i]] = phases_vec[i]
+    for i in eachindex(relative_phase)
+        phases[cycle[i]][train.indices[i]] = relative_phase[i]
     end
 
     #stack the arrays to cycle, batch, neuron
