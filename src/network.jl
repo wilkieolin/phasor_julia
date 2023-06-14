@@ -38,7 +38,7 @@ function (a::PhasorDense)(x::SpikingCall; return_solution::Bool=false)
 end
 
 function (a::PhasorDense)(x::CurrentCall; return_solution::Bool=false)
-    y = bundle_project(x.current_fn, a.weight', a.bias, x.t_span, x.spk_args, return_solution=return_solution)
+    y = bundle_project(x.current, a.weight', a.bias, x.t_span, x.spk_args, return_solution=return_solution)
     return y
 end
 

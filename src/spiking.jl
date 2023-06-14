@@ -8,6 +8,12 @@ struct SpikeTrain
     offset::Real
 end
 
+struct LocalCurrent
+    current_fn::Function
+    shape::Tuple
+    offset::Real
+end
+
 function Base.show(io::IO, train::SpikeTrain)
     print(io, "Spike Train: ", train.shape, " with ", length(train.times), " spikes.")
 end
@@ -34,7 +40,7 @@ struct SpikingCall
 end
 
 struct CurrentCall
-    current_fn::Function
+    current::LocalCurrent
     spk_args::SpikingArgs
     t_span::Tuple{<:Real, <:Real}
 end

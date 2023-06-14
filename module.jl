@@ -6,6 +6,7 @@ export
 #types
 PhasorDense, 
 SpikeTrain, 
+LocalCurrent,
 SpikingArgs, 
 SpikingCall, 
 CurrentCall,
