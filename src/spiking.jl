@@ -33,6 +33,12 @@ struct SpikingCall
     t_span::Tuple{<:Real, <:Real}
 end
 
+struct CurrentCall
+    currents::Any
+    spk_args::SpikingArgs
+    t_span::Tuple{<:Real, <:Real}
+end
+
 function cor_realvals(x, y)
     is_real = x -> .!isnan.(x)
     x_real = is_real(x)
@@ -174,7 +180,7 @@ function train_to_phase(train::SpikeTrain, spk_args::SpikingArgs)
 
     #decode each spike's phase within a cycle
     relative_phase = time_to_phase(train.times, spk_args.t_period, train.offset)
-    relative_time = train.times - train.offset
+    relative_time = train.times .- train.offset
     #what is the number of cycles in this train?
     n_cycles = maximum(relative_time) ÷ spk_args.t_period + 1
     #what is the cycle in which each spike occurs?

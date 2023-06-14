@@ -40,6 +40,25 @@ function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, t
     return next_call
 end
 
+function bundle_project(current_fn::Function, w::AbstractMatrix, b::AbstractVecOrMat, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs; return_solution::Bool=false)
+    #set up functions to define the neuron's differential equations
+    k = (spk_args.leakage + 1im * spk_args.angular_frequency)
+    output_shape = (x.shape[1], size(w, 2))
+    u0 = zeros(ComplexF32, output_shape)
+    dzdt(u, p, t) = k .* u + current_fn(t) * w .+ bias_current(b, t, x.offset, spk_args)'
+    #solve the ODE over the given time span
+    prob = ODEProblem(dzdt, u0, tspan)
+    sol = solve(prob, Heun(), adaptive=false, dt=spk_args.dt)
+    #option for early exit (mostly for debug)
+    if return_solution return sol end
+    #convert the full solution (potentials) to spikes
+    indices, times = find_spikes_rf(sol, spk_args)
+    #construct the spike train and call for the next layer
+    train = SpikeTrain(indices, times, output_shape, x.offset + spk_args.t_period / 4.0)
+    next_call = SpikingCall(train, spk_args, tspan)
+    return next_call
+end
+
 function bind(x::AbstractMatrix; dims)
     bz = sum(x, dims = dims)
     y = remap_phase(bz)
