@@ -37,6 +37,11 @@ function (a::PhasorDense)(x::SpikingCall; return_solution::Bool=false)
     return y
 end
 
+function (a::PhasorDense)(x::CurrentCall; return_solution::Bool=false)
+    y = bundle_project(x.current_fn, a.weight', a.bias, x.t_span, x.spk_args, return_solution=return_solution)
+    return y
+end
+
 function Base.show(io::IO, l::PhasorDense)
     print(io, "PhasorDense(", size(l.weight, 2), " => ", size(l.weight, 1))
     print(io, ")")

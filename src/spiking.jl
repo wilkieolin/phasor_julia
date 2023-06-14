@@ -34,7 +34,7 @@ struct SpikingCall
 end
 
 struct CurrentCall
-    currents::Any
+    current_fn::Function
     spk_args::SpikingArgs
     t_span::Tuple{<:Real, <:Real}
 end
