@@ -27,7 +27,7 @@ complex_to_angle,
 random_symbols,
 similarity,
 similarity_self,
-similarity_outer,
+similarity_outer
 
 include("src/vsa.jl")
 include("src/spiking.jl")
