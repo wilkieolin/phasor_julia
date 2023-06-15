@@ -19,7 +19,6 @@ function Base.show(io::IO, train::SpikeTrain)
 end
 
 struct SpikingArgs
-    angular_frequency::Real
     leakage::Real
     t_period::Real
     t_window::Real
@@ -66,8 +65,7 @@ function cycle_correlation(static_phases::Matrix{<:Real}, dynamic_phases::Array{
 end
 
 function default_spk_args()
-    args = SpikingArgs(2.0 * pi,
-                    -0.2,
+    args = SpikingArgs(-0.2,
                     1.0,
                     0.03,
                     0.02,

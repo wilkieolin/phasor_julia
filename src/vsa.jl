@@ -23,7 +23,8 @@ end
 
 function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs; return_solution::Bool=false)
     #set up functions to define the neuron's differential equations
-    k = (spk_args.leakage + 1im * spk_args.angular_frequency)
+    angular_frequency = 2 * pi / spk_args.t_period
+    k = (spk_args.leakage + 1im * angular_frequency)
     #get the number of batches & output neurons
     output_shape = (x.shape[1], size(w, 2))
     u0 = zeros(ComplexF32, output_shape)
@@ -43,6 +44,7 @@ end
 
 function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs; return_solution::Bool=false)
     #set up functions to define the neuron's differential equations
+    angular_frequency = 2 * pi / spk_args.t_period
     k = (spk_args.leakage + 1im * spk_args.angular_frequency)
     output_shape = (x.shape[1], size(w, 2))
     u0 = zeros(ComplexF32, output_shape)
