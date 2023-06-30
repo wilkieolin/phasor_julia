@@ -45,7 +45,7 @@ end
 function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs; return_solution::Bool=false)
     #set up functions to define the neuron's differential equations
     angular_frequency = 2 * pi / spk_args.t_period
-    k = (spk_args.leakage + 1im * spk_args.angular_frequency)
+    k = (spk_args.leakage + 1im * angular_frequency)
     output_shape = (x.shape[1], size(w, 2))
     u0 = zeros(ComplexF32, output_shape)
     dzdt(u, p, t) = k .* u + x.current_fn(t) * w .+ bias_current(b, t, x.offset, spk_args)'

@@ -150,6 +150,15 @@ function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
 end
 
 """
+Convert a static phase to the complex potential of an R&F neuron
+"""
+function phase_to_potential(phase::Real, t::Array{<:Real}, offset::Real, spk_args::SpikingArgs)
+    period = spk_args.t_period
+    potential = exp.(1im .* (2*pi.*(t .- offset)/(period) .+ phase))
+    return potential
+end
+
+"""
 Converts a matrix of phases into a spike train via phase encoding
 
 phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs, repeats::Int = 1, offset::Real = 0.0)
@@ -172,7 +181,7 @@ function phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs; repeats::
 end
 
 function time_to_phase(times::AbstractVecOrMat, period::Real, offset::Real)
-    times = mod.((times .- offset), period)
+    times = mod.((times .- offset), period) ./ period
     times = (times .- 0.5) .* 2.0
     return times
 end
@@ -197,6 +206,8 @@ function train_to_phase(train::SpikeTrain, spk_args::SpikingArgs)
 
     #stack the arrays to cycle, batch, neuron
     phases = mapreduce(x->reshape(x, 1, train.shape...), vcat, phases)
+    #normalize by the period
+    phases = phases ./ spk_args.t_period
     return phases
 
 end
