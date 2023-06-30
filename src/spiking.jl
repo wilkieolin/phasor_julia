@@ -206,8 +206,6 @@ function train_to_phase(train::SpikeTrain, spk_args::SpikingArgs)
 
     #stack the arrays to cycle, batch, neuron
     phases = mapreduce(x->reshape(x, 1, train.shape...), vcat, phases)
-    #normalize by the period
-    phases = phases ./ spk_args.t_period
     return phases
 
 end
