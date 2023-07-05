@@ -1,15 +1,16 @@
-using Functors
-using Flux: glorot_uniform, truncated_normal, nfan
+using Lux: glorot_uniform, truncated_normal
+using Random: AbstractRNG
 
 include("vsa.jl")
 include("spiking.jl")
 
-struct PhasorDense{M<:AbstractMatrix, B}
-    weight::M
-    bias::B
+struct PhasorDense{M<:AbstractMatrix, B} <: Lux.AbstractExplicitLayer
+    shape::Tuple{<:Int, <:Int}
+    init_weight::Function
+    init_bias::Function
 
     function PhasorDense(W::M, b::B) where {M<:AbstractMatrix, B<:AbstractVector}
-      new{M,typeof(b)}(W, b)
+      new{M,typeof(b)}(size(W), () -> copy(W), () -> copy(b))
     end
 end
   
@@ -25,25 +26,27 @@ function PhasorDense((in, out)::Pair{<:Integer, <:Integer};
     PhasorDense(w)
 end
 
-@functor PhasorDense
+function Lux.initialparameters(rng::AbstractRNG, layer::PhasorDense)
+    params = (weight = layer.init_weight(), bias = layer.init_bias())
+end
 
-function (a::PhasorDense)(x::AbstractVecOrMat)
-    y = bundle_project(x, a.weight', a.bias)
+function (a::PhasorDense)(x::AbstractVecOrMat, params::NamedTuple)
+    y = bundle_project(x, params.weight', params.bias)
     return y
 end
 
-function (a::PhasorDense)(x::SpikingCall; return_solution::Bool=false)
-    y = bundle_project(x.train, a.weight', a.bias, x.t_span, x.spk_args, return_solution=return_solution)
+function (a::PhasorDense)(x::SpikingCall, params::NamedTuple; return_solution::Bool=false)
+    y = bundle_project(x.train, params.weight', params.bias, x.t_span, x.spk_args, return_solution=return_solution)
     return y
 end
 
-function (a::PhasorDense)(x::CurrentCall; return_solution::Bool=false)
-    y = bundle_project(x.current, a.weight', a.bias, x.t_span, x.spk_args, return_solution=return_solution)
+function (a::PhasorDense)(x::CurrentCall, params::NamedTuple; return_solution::Bool=false)
+    y = bundle_project(x.current, params.weight', params.bias, x.t_span, x.spk_args, return_solution=return_solution)
     return y
 end
 
 function Base.show(io::IO, l::PhasorDense)
-    print(io, "PhasorDense(", size(l.weight, 2), " => ", size(l.weight, 1))
+    print(io, "PhasorDense(", l.shape)
     print(io, ")")
 end
 
@@ -82,7 +85,7 @@ function accuracy_quadrature(phases::Array{<:Real,3}, truth::AbstractMatrix)
 end
 
 function variance_scaling(shape::Integer...; mode::String = "fan_in", scale::Real = 1.0)
-    fan_in, fan_out = nfan(shape)
+    fan_in, fan_out = shape
     if mode == "fan_in"
         scale /= max(1.0, fan_in)
     elseif mode == "fan_out"

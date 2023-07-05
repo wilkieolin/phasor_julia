@@ -1,6 +1,6 @@
 module PhasorNetworks
 
-using Flux, Functors, DifferentialEquations, Statistics
+using Lux, Functors, DifferentialEquations, Statistics
 
 export 
 #types
