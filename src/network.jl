@@ -22,7 +22,7 @@ end
 function PhasorDense((in, out)::Pair{<:Integer, <:Integer};
                 init = variance_scaling)
 
-    w = init(out, in)
+    w = init(in, out)
     PhasorDense(w)
 end
 
