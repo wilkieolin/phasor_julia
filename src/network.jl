@@ -31,18 +31,18 @@ function Lux.initialparameters(rng::AbstractRNG, layer::PhasorDense)
 end
 
 function (a::PhasorDense)(x::AbstractVecOrMat, params::NamedTuple, state::NamedTuple)
-    y = bundle_project(x, params.weight', params.bias)
-    return y
+    y = bundle_project(x, params.weight, params.bias)
+    return y, state
 end
 
 function (a::PhasorDense)(x::SpikingCall, params::NamedTuple, state::NamedTuple; return_solution::Bool=false)
-    y = bundle_project(x.train, params.weight', params.bias, x.t_span, x.spk_args, return_solution=return_solution)
-    return y
+    y = bundle_project(x.train, params.weight, params.bias, x.t_span, x.spk_args, return_solution=return_solution)
+    return y, state
 end
 
 function (a::PhasorDense)(x::CurrentCall, params::NamedTuple, state::NamedTuple; return_solution::Bool=false)
-    y = bundle_project(x.current, params.weight', params.bias, x.t_span, x.spk_args, return_solution=return_solution)
-    return y
+    y = bundle_project(x.current, params.weight, params.bias, x.t_span, x.spk_args, return_solution=return_solution)
+    return y, state
 end
 
 function Base.show(io::IO, l::PhasorDense)

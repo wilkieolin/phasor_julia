@@ -28,7 +28,7 @@ function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, t
     #get the number of batches & output neurons
     output_shape = (x.shape[1], size(w, 2))
     u0 = zeros(ComplexF32, output_shape)
-    dzdt(u, p, t) = k .* u + spike_current(x, t, spk_args) * w .+ bias_current(b, t, x.offset, spk_args)'
+    dzdt(u, p, t) = k .* u + spike_current(x, t, spk_args) * w' .+ bias_current(b, t, x.offset, spk_args)'
     #solve the ODE over the given time span
     prob = ODEProblem(dzdt, u0, tspan)
     sol = solve(prob, Heun(), adaptive=false, dt=spk_args.dt)
@@ -48,7 +48,7 @@ function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat,
     k = (spk_args.leakage + 1im * angular_frequency)
     output_shape = (x.shape[1], size(w, 2))
     u0 = zeros(ComplexF32, output_shape)
-    dzdt(u, p, t) = k .* u + x.current_fn(t) * w .+ bias_current(b, t, x.offset, spk_args)'
+    dzdt(u, p, t) = k .* u + x.current_fn(t) * w' .+ bias_current(b, t, x.offset, spk_args)'
     #solve the ODE over the given time span
     prob = ODEProblem(dzdt, u0, tspan)
     sol = solve(prob, Heun(), adaptive=false, dt=spk_args.dt)
