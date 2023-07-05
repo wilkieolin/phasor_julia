@@ -15,7 +15,7 @@ struct PhasorDense{M<:AbstractMatrix, B} <: Lux.AbstractExplicitLayer
 end
   
 function PhasorDense(W::AbstractMatrix)
-    b = ones(axes(W,1))
+    b = ones(axes(W,2))
     return PhasorDense(W, b)
 end
 
@@ -30,17 +30,17 @@ function Lux.initialparameters(rng::AbstractRNG, layer::PhasorDense)
     params = (weight = layer.init_weight(), bias = layer.init_bias())
 end
 
-function (a::PhasorDense)(x::AbstractVecOrMat, params::NamedTuple)
+function (a::PhasorDense)(x::AbstractVecOrMat, params::NamedTuple, state::NamedTuple)
     y = bundle_project(x, params.weight', params.bias)
     return y
 end
 
-function (a::PhasorDense)(x::SpikingCall, params::NamedTuple; return_solution::Bool=false)
+function (a::PhasorDense)(x::SpikingCall, params::NamedTuple, state::NamedTuple; return_solution::Bool=false)
     y = bundle_project(x.train, params.weight', params.bias, x.t_span, x.spk_args, return_solution=return_solution)
     return y
 end
 
-function (a::PhasorDense)(x::CurrentCall, params::NamedTuple; return_solution::Bool=false)
+function (a::PhasorDense)(x::CurrentCall, params::NamedTuple, state::NamedTuple; return_solution::Bool=false)
     y = bundle_project(x.current, params.weight', params.bias, x.t_span, x.spk_args, return_solution=return_solution)
     return y
 end
@@ -85,7 +85,9 @@ function accuracy_quadrature(phases::Array{<:Real,3}, truth::AbstractMatrix)
 end
 
 function variance_scaling(shape::Integer...; mode::String = "fan_in", scale::Real = 1.0)
-    fan_in, fan_out = shape
+    fan_in = shape[1]
+    fan_out = shape[end]
+
     if mode == "fan_in"
         scale /= max(1.0, fan_in)
     elseif mode == "fan_out"
