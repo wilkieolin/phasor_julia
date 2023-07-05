@@ -1,8 +1,11 @@
 using Lux: glorot_uniform, truncated_normal
+using ComponentArrays
 using Random: AbstractRNG
 
 include("vsa.jl")
 include("spiking.jl")
+
+LuxParams = Union{NamedTuple, ComponentArray}
 
 struct PhasorDense{M<:AbstractMatrix, B} <: Lux.AbstractExplicitLayer
     shape::Tuple{<:Int, <:Int}
@@ -30,17 +33,17 @@ function Lux.initialparameters(rng::AbstractRNG, layer::PhasorDense)
     params = (weight = layer.init_weight(), bias = layer.init_bias())
 end
 
-function (a::PhasorDense)(x::AbstractVecOrMat, params::NamedTuple, state::NamedTuple)
+function (a::PhasorDense)(x::AbstractVecOrMat, params::LuxParams, state::NamedTuple)
     y = bundle_project(x, params.weight, params.bias)
     return y, state
 end
 
-function (a::PhasorDense)(x::SpikingCall, params::NamedTuple, state::NamedTuple; return_solution::Bool=false)
+function (a::PhasorDense)(x::SpikingCall, params::LuxParams, state::NamedTuple; return_solution::Bool=false)
     y = bundle_project(x.train, params.weight, params.bias, x.t_span, x.spk_args, return_solution=return_solution)
     return y, state
 end
 
-function (a::PhasorDense)(x::CurrentCall, params::NamedTuple, state::NamedTuple; return_solution::Bool=false)
+function (a::PhasorDense)(x::CurrentCall, params::LuxParams, state::NamedTuple; return_solution::Bool=false)
     y = bundle_project(x.current, params.weight, params.bias, x.t_span, x.spk_args, return_solution=return_solution)
     return y, state
 end
