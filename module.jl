@@ -14,6 +14,7 @@ CurrentCall,
 #spiking
 default_spk_args,
 phase_to_train,
+phase_to_potential,
 train_to_phase,
 zero_nans,
 cycle_correlation,
