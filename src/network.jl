@@ -1,19 +1,25 @@
-using Lux: glorot_uniform, truncated_normal
-using ComponentArrays
+using ComponentArrays, SciMLSensitivity, OrdinaryDiffEq, ForwardDiff
 using Random: AbstractRNG
+using Lux: glorot_uniform, truncated_normal
 
 include("vsa.jl")
 include("spiking.jl")
 
 LuxParams = Union{NamedTuple, ComponentArray}
 
+###
+### Phasor Dense definitions
+###
+
 struct PhasorDense{M<:AbstractMatrix, B} <: Lux.AbstractExplicitLayer
     shape::Tuple{<:Int, <:Int}
+    in_dims::Int
+    out_dims::Int
     init_weight::Function
     init_bias::Function
 
     function PhasorDense(W::M, b::B) where {M<:AbstractMatrix, B<:AbstractVector}
-      new{M,typeof(b)}(size(W), () -> copy(W), () -> copy(b))
+      new{M,typeof(b)}(size(W), size(W,1), size(W,2), () -> copy(W), () -> copy(b))
     end
 end
   
@@ -52,6 +58,48 @@ function Base.show(io::IO, l::PhasorDense)
     print(io, "PhasorDense(", l.shape)
     print(io, ")")
 end
+
+###
+### PhasorODE Layer
+###
+
+struct PhasorODE{M <: Lux.AbstractExplicitLayer, So, Se, T, K} <: Lux.AbstractExplicitContainerLayer{(:model,)}
+    model::M
+    solver::So
+    sensealg::Se
+    tspan::T
+    constant::Number
+    dt::Real
+    kwargs::K
+end
+
+#constructor
+function PhasorODE(model::Lux.AbstractExplicitLayer; 
+    solver=Tsit5(),
+    sensealg=QuadratureAdjoint(),
+    tspan=(0.0, 30.0),
+    constant=(-0.01 + 2 * im * pi / 10),
+    dt=0.1,
+    kwargs...)
+
+    return PhasorODE(model, solver, sensealg, tspan, constant, dt, kwargs)
+end
+
+#forward pass
+function (n::PhasorODE)(currents, ps, st)
+    #define the function which updates neurons' potentials
+    function dudt(u, p, t)
+        du_real, _ = n.model(currents(t), p, st)
+        du = n.constant .* u .+ du_real
+        return du
+    end
+
+    u0 = zeros(ComplexF32, (n.model.out_dims,))
+    prob = ODEProblem(dudt, u0, n.tspan, ps)
+    soln = solve(prob, n.solver, adaptive=false, dt=n.dt, saveat = n.tspan[2], n.kwargs)
+    return soln, st
+end
+
 
 function quadrature_loss(phases::AbstractMatrix, truth::AbstractMatrix)
     targets = 0.5 .* truth
