@@ -5,6 +5,7 @@ using Lux, DifferentialEquations, Statistics
 export 
 #types
 PhasorDense, 
+PhasorODE,
 SpikeTrain, 
 LocalCurrent,
 SpikingArgs, 

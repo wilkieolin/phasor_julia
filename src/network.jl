@@ -63,14 +63,13 @@ end
 ### PhasorODE Layer
 ###
 
-struct PhasorODE{M <: Lux.AbstractExplicitLayer, So, Se, T, K} <: Lux.AbstractExplicitContainerLayer{(:model,)}
+struct PhasorODE{M <: Lux.AbstractExplicitLayer, So, Se, T} <: Lux.AbstractExplicitContainerLayer{(:model,)}
     model::M
     solver::So
     sensealg::Se
     tspan::T
     constant::Number
     dt::Real
-    kwargs::K
 end
 
 #constructor
@@ -79,24 +78,24 @@ function PhasorODE(model::Lux.AbstractExplicitLayer;
     sensealg=QuadratureAdjoint(),
     tspan=(0.0, 30.0),
     constant=(-0.01 + 2 * im * pi / 10),
-    dt=0.1,
-    kwargs...)
+    dt=0.1)
 
-    return PhasorODE(model, solver, sensealg, tspan, constant, dt, kwargs)
+    return PhasorODE(model, solver, sensealg, tspan, constant, dt)
 end
 
 #forward pass
 function (n::PhasorODE)(currents, ps, st)
     #define the function which updates neurons' potentials
     function dudt(u, p, t)
-        du_real, _ = n.model(currents(t), p, st)
+        du_real, _ = n.model(currents(t)', p, st)
         du = n.constant .* u .+ du_real
         return du
     end
 
-    u0 = zeros(ComplexF32, (n.model.out_dims,))
+    i0 = currents(0.0)
+    u0 = zeros(ComplexF32, (n.model.out_dims, size(i0, 1)))
     prob = ODEProblem(dudt, u0, n.tspan, ps)
-    soln = solve(prob, n.solver, adaptive=false, dt=n.dt, saveat = n.tspan[2], n.kwargs)
+    soln = solve(prob, n.solver, adaptive=false, dt=n.dt, saveat = n.tspan[2])
     return soln, st
 end
 
