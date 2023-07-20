@@ -75,7 +75,7 @@ end
 #constructor
 function PhasorODE(model::Lux.AbstractExplicitLayer; 
     solver=Tsit5(),
-    sensealg=QuadratureAdjoint(),
+    sensealg=InterpolatingAdjoint(; autojacvec=ZygoteVJP()),
     tspan=(0.0, 30.0),
     constant=(-0.01 + 2 * im * pi / 10),
     dt=0.1)
@@ -92,10 +92,16 @@ function (n::PhasorODE)(currents, ps, st)
         return du
     end
 
+    #sample the input to determine size of the state
     i0 = currents(0.0)
-    u0 = zeros(ComplexF32, (n.model.out_dims, size(i0, 1)))
+    u0 = zeros(ComplexF32, (n.model[end].out_dims, size(i0, 1)))
     prob = ODEProblem(dudt, u0, n.tspan, ps)
-    soln = solve(prob, n.solver, adaptive=false, dt=n.dt, saveat = n.tspan[2])
+    soln = solve(prob, n.solver, 
+        adaptive = false, 
+        dt = n.dt, 
+        saveat = n.tspan[2], 
+        sensealg = n.sensealg,
+        save_start = false)
     return soln, st
 end
 
