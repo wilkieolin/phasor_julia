@@ -154,8 +154,18 @@ Convert a static phase to the complex potential of an R&F neuron
 """
 function phase_to_potential(phase::Real, t::Array{<:Real}, offset::Real, spk_args::SpikingArgs)
     period = spk_args.t_period
-    potential = exp.(1im .* (2*pi.*(t .- offset)/(period) .+ phase))
+    potential = exp.(1im .* (2*pi.*(t .- offset)/(period) .- pi*phase))
     return potential
+end
+
+function potential_to_phase(potential::AbstractVecOrMat, t::Real, offset::Real, spk_args::SpikingArgs)
+    #find the angle of a neuron representing 0 phase at the current moment in time
+    current_zero = angle.(phase_to_potential(0.0, [t], offset, spk_args))
+    #get the arc subtended in the complex plane between that reference and our neuron potentials
+    arc = angle.(potential) .- current_zero
+    #normalize by pi
+    phase = arc ./ pi
+    return phase
 end
 
 """
