@@ -162,9 +162,9 @@ function potential_to_phase(potential::AbstractVecOrMat, t::Real, offset::Real, 
     #find the angle of a neuron representing 0 phase at the current moment in time
     current_zero = angle.(phase_to_potential(0.0, [t], offset, spk_args))
     #get the arc subtended in the complex plane between that reference and our neuron potentials
-    arc = angle.(potential) .- current_zero
+    arc = current_zero .- angle.(potential)
     #normalize by pi
-    phase = arc ./ pi
+    phase = mod.(arc ./ pi, 1.0)
     return phase
 end
 
