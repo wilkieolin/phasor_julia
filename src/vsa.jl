@@ -26,7 +26,7 @@ function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, t
     angular_frequency = 2 * pi / spk_args.t_period
     k = (spk_args.leakage + 1im * angular_frequency)
     #get the number of batches & output neurons
-    output_shape = (x.shape[1], size(w, 2))
+    output_shape = (size(w, 1), x.shape[2])
     u0 = zeros(ComplexF32, output_shape)
     dzdt(u, p, t) = k .* u + w * spike_current(x, t, spk_args) .+ bias_current(b, t, x.offset, spk_args)
     #solve the ODE over the given time span
@@ -46,7 +46,7 @@ function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat,
     #set up functions to define the neuron's differential equations
     angular_frequency = 2 * pi / spk_args.t_period
     k = (spk_args.leakage + 1im * angular_frequency)
-    output_shape = (x.shape[1], size(w, 2))
+    output_shape = (size(w, 1), x.shape[2])
     u0 = zeros(ComplexF32, output_shape)
     dzdt(u, p, t) = k .* u + w * x.current_fn(t) .+ bias_current(b, t, x.offset, spk_args)
     #solve the ODE over the given time span
@@ -89,15 +89,9 @@ function remap_phase(x::AbstractVecOrMat)
     return x
 end
 
-function similarity(x::AbstractMatrix, y::AbstractMatrix)
+function similarity(x::AbstractArray, y::AbstractArray, dims::Int)
     dx = cos.(pi .* (x .- y))
-    s = mean(dx, dims = ndims(dx))
-    return s
-end
-
-function similarity(x::AbstractVecOrMat, y::AbstractVecOrMat)
-    dx = cos.(pi .* (x .- y))
-    s = mean(dx, dims = ndims(dx))
+    s = mean(dx, dims = dims)
     return s
 end
 
@@ -106,6 +100,6 @@ function similarity_self(x::AbstractMatrix)
 end
 
 function similarity_outer(x::AbstractMatrix, y::AbstractMatrix)
-    s = [similarity(x[i:i, :], y[j:j,:])[1] for i in 1:size(x)[1], j in 1:size(y)[1]]
+    s = [similarity(x[i:i, :], y[j:j,:], 2)[1] for i in 1:size(x)[1], j in 1:size(y)[1]]
     return s
 end

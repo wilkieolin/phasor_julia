@@ -87,7 +87,7 @@ end
 function (n::PhasorODE)(currents, ps, st)
     #define the function which updates neurons' potentials
     function dudt(u, p, t)
-        du_real, _ = n.model(currents(t)', p, st)
+        du_real, _ = n.model(currents(t), p, st)
         constant = n.spk_args.leakage + 2*pi*im / n.spk_args.t_period
         du = constant .* u .+ du_real
         return du
@@ -95,7 +95,7 @@ function (n::PhasorODE)(currents, ps, st)
 
     #sample the input to determine size of the state
     i0 = currents(0.0)
-    u0 = zeros(ComplexF32, (n.model[end].out_dims, size(i0, 1)))
+    u0 = zeros(ComplexF32, (size(i0, 1), n.model[end].out_dims))
     prob = ODEProblem(dudt, u0, n.tspan, ps)
     soln = solve(prob, n.solver, 
         adaptive = false, 
@@ -109,7 +109,7 @@ end
 
 function quadrature_loss(phases::AbstractMatrix, truth::AbstractMatrix)
     targets = 0.5 .* truth
-    sim = similarity(phases, targets)
+    sim = similarity(phases, targets, 1)
     return 1.0 .- sim
 end
 
@@ -119,7 +119,7 @@ function accuracy(data_loader, model, spk_args::SpikingArgs, t_span::Tuple{<:Rea
     num = 0
 
     for (x, y) in data_loader
-        train = phase_to_train(x', spk_args, repeats=3)
+        train = phase_to_train(x, spk_args, repeats=3)
         call = SpikingCall(train, spk_args, t_span)
         spk_output = model(call)
         ŷ = train_to_phase(spk_output)
@@ -132,7 +132,7 @@ function accuracy(data_loader, model, spk_args::SpikingArgs, t_span::Tuple{<:Rea
 end
 
 function accuracy_quadrature(phases::AbstractMatrix, truth::AbstractMatrix)
-    predictions = getindex.(argmin(abs.(phases .- 0.5), dims=2), 2)
+    predictions = getindex.(argmin(abs.(phases .- 0.5), dims=1), 1)'
     labels = getindex.(findall(truth), 1)
     return predictions .== labels
 end
