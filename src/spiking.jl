@@ -26,6 +26,18 @@ struct SpikingArgs
     dt::Real
 end
 
+function SpikingArgs(; leakage::Real = -0.2, 
+                    t_period::Real = 1.0,
+                    t_window::Real = 0.01,
+                    threshold::Real = 0.02,
+                    dt::Real = 0.01)
+    return SpikingArgs(leakage, t_period, t_window, threshold, dt)
+end
+
+function default_spk_args()
+    return SpikingArgs()
+end
+
 function Base.show(io::IO, spk_args::SpikingArgs)
     print(io, "Neuron parameters: Period ", spk_args.t_period, " (s)\n")
     print(io, "Current kernel duration: ", spk_args.t_window, " (s)\n")
@@ -62,15 +74,6 @@ function cycle_correlation(static_phases::Matrix{<:Real}, dynamic_phases::Array{
     n_cycles = axes(dynamic_phases, 1)
     cor_vals = [cor_realvals(static_phases |> vec, dynamic_phases[i,:,:] |> vec) for i in n_cycles]
     return cor_vals
-end
-
-function default_spk_args()
-    args = SpikingArgs(-0.2,
-                    1.0,
-                    0.03,
-                    0.02,
-                    0.01)
-    return args
 end
 
 function spike_current(train::SpikeTrain, t::Real, spk_args::SpikingArgs)
@@ -158,6 +161,9 @@ function phase_to_potential(phase::Real, t::Array{<:Real}, offset::Real, spk_arg
     return potential
 end
 
+"""
+Convert the potential of a neuron at an arbitrary point in time to its phase relative to a reference
+"""
 function potential_to_phase(potential::AbstractVecOrMat, t::Real, offset::Real, spk_args::SpikingArgs)
     #find the angle of a neuron representing 0 phase at the current moment in time
     current_zero = angle.(phase_to_potential(0.0, [t], offset, spk_args))

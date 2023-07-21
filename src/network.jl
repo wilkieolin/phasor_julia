@@ -1,4 +1,4 @@
-using ComponentArrays, SciMLSensitivity, OrdinaryDiffEq, ForwardDiff
+using ComponentArrays, SciMLSensitivity, OrdinaryDiffEq
 using Random: AbstractRNG
 using Lux: glorot_uniform, truncated_normal
 
@@ -68,7 +68,7 @@ struct PhasorODE{M <: Lux.AbstractExplicitLayer, So, Se, T} <: Lux.AbstractExpli
     solver::So
     sensealg::Se
     tspan::T
-    constant::Number
+    spk_args::SpikingArgs
     dt::Real
 end
 
@@ -77,10 +77,10 @@ function PhasorODE(model::Lux.AbstractExplicitLayer;
     solver=Tsit5(),
     sensealg=InterpolatingAdjoint(; autojacvec=ZygoteVJP()),
     tspan=(0.0, 30.0),
-    constant=(-0.01 + 2 * im * pi / 10),
+    spk_args=SpikingArgs(),
     dt=0.1)
 
-    return PhasorODE(model, solver, sensealg, tspan, constant, dt)
+    return PhasorODE(model, solver, sensealg, tspan, spk_args, dt)
 end
 
 #forward pass
@@ -88,7 +88,8 @@ function (n::PhasorODE)(currents, ps, st)
     #define the function which updates neurons' potentials
     function dudt(u, p, t)
         du_real, _ = n.model(currents(t)', p, st)
-        du = n.constant .* u .+ du_real
+        constant = n.spk_args.leakage + 2*pi*im / n.spk_args.t_period
+        du = constant .* u .+ du_real
         return du
     end
 
