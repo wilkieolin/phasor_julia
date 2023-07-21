@@ -19,19 +19,19 @@ struct PhasorDense{M<:AbstractMatrix, B} <: Lux.AbstractExplicitLayer
     init_bias::Function
 
     function PhasorDense(W::M, b::B) where {M<:AbstractMatrix, B<:AbstractVector}
-      new{M,typeof(b)}(size(W), size(W,1), size(W,2), () -> copy(W), () -> copy(b))
+      new{M,typeof(b)}(size(W), size(W,2), size(W,1), () -> copy(W), () -> copy(b))
     end
 end
   
 function PhasorDense(W::AbstractMatrix)
-    b = ones(axes(W,2))
+    b = ones(axes(W,1))
     return PhasorDense(W, b)
 end
 
 function PhasorDense((in, out)::Pair{<:Integer, <:Integer};
                 init = variance_scaling)
 
-    w = init(in, out)
+    w = init(out, in)
     PhasorDense(w)
 end
 

@@ -16,7 +16,7 @@ function bundle(x::AbstractMatrix; dims)
 end
 
 function bundle_project(x::AbstractMatrix, w::AbstractMatrix, b::AbstractVecOrMat)
-    xz = angle_to_complex(x) * w .+ b'
+    xz = w * angle_to_complex(x) .+ b
     y = complex_to_angle(xz)
     return y
 end
@@ -28,7 +28,7 @@ function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, t
     #get the number of batches & output neurons
     output_shape = (x.shape[1], size(w, 2))
     u0 = zeros(ComplexF32, output_shape)
-    dzdt(u, p, t) = k .* u + spike_current(x, t, spk_args) * w .+ bias_current(b, t, x.offset, spk_args)'
+    dzdt(u, p, t) = k .* u + w * spike_current(x, t, spk_args) .+ bias_current(b, t, x.offset, spk_args)
     #solve the ODE over the given time span
     prob = ODEProblem(dzdt, u0, tspan)
     sol = solve(prob, Heun(), adaptive=false, dt=spk_args.dt)
@@ -48,7 +48,7 @@ function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat,
     k = (spk_args.leakage + 1im * angular_frequency)
     output_shape = (x.shape[1], size(w, 2))
     u0 = zeros(ComplexF32, output_shape)
-    dzdt(u, p, t) = k .* u + x.current_fn(t) * w .+ bias_current(b, t, x.offset, spk_args)'
+    dzdt(u, p, t) = k .* u + w * x.current_fn(t) .+ bias_current(b, t, x.offset, spk_args)
     #solve the ODE over the given time span
     prob = ODEProblem(dzdt, u0, tspan)
     sol = solve(prob, Heun(), adaptive=false, dt=spk_args.dt)
@@ -68,7 +68,7 @@ function bind(x::AbstractMatrix; dims)
     return y
 end
 
-function bind(x::AbstractMatrix, y::AbstractMatrix; dims)
+function bind(x::AbstractMatrix, y::AbstractMatrix;)
     y = remap_phase(x .+ y)
     return y
 end
