@@ -163,8 +163,8 @@ function potential_to_phase(potential::AbstractVecOrMat, t::Real, offset::Real, 
     current_zero = angle.(phase_to_potential(0.0, [t], offset, spk_args))
     #get the arc subtended in the complex plane between that reference and our neuron potentials
     arc = current_zero .- angle.(potential)
-    #normalize by pi
-    phase = mod.(arc ./ pi, 1.0)
+    #normalize by py and shift to -1, 1
+    phase = mod.((arc ./ pi .+ 1.0), 2.0) .- 1.0
     return phase
 end
 
