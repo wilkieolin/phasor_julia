@@ -164,7 +164,7 @@ end
 """
 Convert the potential of a neuron at an arbitrary point in time to its phase relative to a reference
 """
-function potential_to_phase(potential::AbstractVecOrMat, t::Real, offset::Real, spk_args::SpikingArgs)
+function potential_to_phase(potential::AbstractArray, t::Real, offset::Real, spk_args::SpikingArgs)
     #find the angle of a neuron representing 0 phase at the current moment in time
     current_zero = angle.(phase_to_potential(0.0, [t], offset, spk_args))
     #get the arc subtended in the complex plane between that reference and our neuron potentials
