@@ -171,6 +171,9 @@ function potential_to_phase(potential::AbstractArray, t::Real, offset::Real, spk
     arc = current_zero .- angle.(potential)
     #normalize by py and shift to -1, 1
     phase = mod.((arc ./ pi .+ 1.0), 2.0) .- 1.0
+    #remove the trailing dimension without upsetting zygote with dropdims
+    n_neurons, n_batch, _ = size(phase)
+    phase = reshape(phase, n_neurons, n_batch)
     return phase
 end
 
