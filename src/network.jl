@@ -95,7 +95,7 @@ function (n::PhasorODE)(currents, ps, st)
 
     #sample the input to determine size of the state
     i0 = currents(0.0)
-    u0 = zeros(ComplexF32, (size(i0, 1), n.model[end].out_dims))
+    u0 = zeros(ComplexF32, (n.model[end].out_dims, size(i0)[end]))
     prob = ODEProblem(dudt, u0, n.tspan, ps)
     soln = solve(prob, n.solver, 
         adaptive = false, 
