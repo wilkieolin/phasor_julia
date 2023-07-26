@@ -113,6 +113,11 @@ function quadrature_loss(phases::AbstractMatrix, truth::AbstractMatrix)
     return 1.0 .- sim
 end
 
+function similarity_loss(phases::AbstractArray, truth::AbstractArray, dim::Int)
+    sim = similarity(phases, truth, dim)
+    return 1.0 .- sim
+end
+
 function accuracy(data_loader, model, spk_args::SpikingArgs, t_span::Tuple{<:Real, <:Real})
     acc = []
     n_phases = []
