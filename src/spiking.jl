@@ -114,42 +114,30 @@ end
 
 function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
     t = sol.t
-    u = sol.u
+    #rearrange into array of batch, neuron, time
+    u = Array(sol)
 
     @assert typeof(sol.u) <: Vector{<:Matrix{<:Complex}} "This method is for R&F neurons with complex potential"
     #if potential is from an R&F neuron, it is complex and voltage is the imaginary part
     voltage = imag.(u)
     current = real.(u)
 
-    #convert vector of matrices to 2D matrix
-    function rearrange_sol(x)
-        #rearrange to (time, batch, neuron)
-        x = reshape(reduce(vcat, x), (axes(sol.u[1], 1), axes(sol.t, 1), axes(sol.u[1], 2)))
-        x = permutedims(x, (2, 1, 3))
-        return x
-    end
-    
-    voltage = rearrange_sol(voltage)
-    current = rearrange_sol(current)
-
     #find the local voltage maxima through the first derivative (current)
-    maxima = findall(diff(sign.(current), dims=1) .< 0)
+    maxima = findall(diff(sign.(current), dims=3) .< 0)
     zero_i = current[maxima]
     peak_voltages = voltage[maxima]
-    #return maxima, peak_voltages
     #check voltages at these peaks are above the threshold
-    above_threshold = peak_voltages .> spk_args.threshold
+    above_threshold = abs.(peak_voltages) .> spk_args.threshold
     spikes = maxima[above_threshold]
 
     #retrieve the indices of the spiking neurons
-    batch = getindex.(spikes, 2)
-    neuron = getindex.(spikes, 3)
+    batch = getindex.(spikes, 1)
+    neuron = getindex.(spikes, 2)
     channels = CartesianIndex.(batch, neuron)
     #retrieve the times they spiked at
-    times = t[getindex.(spikes, 1)]
+    times = t[getindex.(spikes, 3)]
     
     return channels, times
-
 end
 
 function neuron_constant(spk_args::SpikingArgs)
