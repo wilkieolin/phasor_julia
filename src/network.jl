@@ -107,7 +107,7 @@ function (n::PhasorODE)(currents, ps, st)
 end
 
 
-function quadrature_loss(phases::AbstractMatrix, truth::AbstractMatrix)
+function quadrature_loss(phases::AbstractArray, truth::AbstractArray)
     targets = 0.5 .* truth
     sim = similarity(phases, targets, 1)
     return 1.0 .- sim
