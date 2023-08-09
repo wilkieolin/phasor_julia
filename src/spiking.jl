@@ -152,6 +152,17 @@ function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
 
 end
 
+function neuron_constant(spk_args::SpikingArgs)
+    angular_frequency = period_to_angfreq(spk_args.t_period)
+    k = (spk_args.leakage + 1im * angular_frequency)
+    return k
+end
+
+function period_to_angfreq(t_period::Real)
+    angular_frequency = 2 * pi / t_period
+    return angular_frequency
+end
+
 """
 Convert a static phase to the complex potential of an R&F neuron
 """

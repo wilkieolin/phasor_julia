@@ -3,9 +3,49 @@ using DifferentialEquations
 
 include("spiking.jl")
 
-function angle_to_complex(x::AbstractVecOrMat)
+function angle_to_complex(x::AbstractArray)
     k = convert(ComplexF32, pi * (0.0 + 1.0im))
     return exp.(k .* x)
+end
+function bind(x::AbstractArray; dims)
+    bz = sum(x, dims = dims)
+    y = remap_phase(bz)
+    return y
+end
+
+function bind(x::AbstractArray, y::AbstractArray)
+    y = remap_phase(x + y)
+    return y
+end
+
+function bind(x::SpikeTrain, y::SpikeTrain, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs)
+    #set up functions to define the neuron's differential equations
+    k = neuron_constant(spk_args)
+    #get the number of batches & output neurons
+    output_shape = size(x)
+
+    #integrate current through the first compartment that will flow through into the second
+    #set up the first compartment
+    u0 = zeros(ComplexF32, output_shape)
+    dzdt_x(u, p, t) = k .* u + spike_current(x, t, spk_args)
+    #solve the ODE for the first compartment over the given time span
+    prob_x = ODEProblem(dzdt_x, u0, tspan)
+    sol_x = solve(prob_x, Heun(), adaptive=false, dt=spk_args.dt)
+    return sol_x
+    u_x = Array(sol_x)
+
+    #set up the second compartment
+    #current will flow into the second compartment enabled by the second input and flow backards in time
+    dzdt_y(u, p, t) = -k .* u + u_x * spike_current(y, t, spk_args)
+    #solve the second compartment
+    prob_y = ODEProblem(dzdt_y, u0, tspan)
+    sol_y = solve(prob_y, Heun(), adaptive=false, dt=spk_args.dt)
+    indices, times = find_spikes_rf(sol_y, spk_args)
+    #construct the spike train and call for the next layer
+    train = SpikeTrain(indices, times, output_shape, x.offset + spk_args.t_period / 4.0)
+    next_call = SpikingCall(train, spk_args, tspan)
+    return next_call
+
 end
 
 function bundle(x::AbstractMatrix; dims)
@@ -21,10 +61,10 @@ function bundle_project(x::AbstractMatrix, w::AbstractMatrix, b::AbstractVecOrMa
     return y
 end
 
+#TODO - make dimensions constant with static call
 function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs; return_solution::Bool=false)
     #set up functions to define the neuron's differential equations
-    angular_frequency = 2 * pi / spk_args.t_period
-    k = (spk_args.leakage + 1im * angular_frequency)
+    k = neuron_constant(spk_args)
     #get the number of batches & output neurons
     output_shape = (size(w, 1), x.shape[2])
     u0 = zeros(ComplexF32, output_shape)
