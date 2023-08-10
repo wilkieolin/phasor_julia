@@ -21,8 +21,9 @@ end
 function bind(x::SpikeTrain, y::SpikeTrain, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs)
     #set up functions to define the neuron's differential equations
     k = neuron_constant(spk_args)
+    k2 = -1 * imag(k) + real(k)
     #get the number of batches & output neurons
-    output_shape = size(x)
+    output_shape = x.shape
 
     #integrate current through the first compartment that will flow through into the second
     #set up the first compartment
@@ -31,15 +32,15 @@ function bind(x::SpikeTrain, y::SpikeTrain, tspan::Tuple{<:Real, <:Real}, spk_ar
     #solve the ODE for the first compartment over the given time span
     prob_x = ODEProblem(dzdt_x, u0, tspan)
     sol_x = solve(prob_x, Heun(), adaptive=false, dt=spk_args.dt)
-    return sol_x
-    u_x = Array(sol_x)
 
     #set up the second compartment
     #current will flow into the second compartment enabled by the second input and flow backards in time
-    dzdt_y(u, p, t) = -k .* u + u_x * spike_current(y, t, spk_args)
+    dzdt_y(u, p, t) = k2 .* u .+ sol_x(t) .* spike_current(y, t, spk_args)
     #solve the second compartment
     prob_y = ODEProblem(dzdt_y, u0, tspan)
     sol_y = solve(prob_y, Heun(), adaptive=false, dt=spk_args.dt)
+
+    return sol_x, sol_y
     indices, times = find_spikes_rf(sol_y, spk_args)
     #construct the spike train and call for the next layer
     train = SpikeTrain(indices, times, output_shape, x.offset + spk_args.t_period / 4.0)
