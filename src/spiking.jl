@@ -112,7 +112,7 @@ function bias_current(bias::AbstractVecOrMat, t::Real, t_offset::Real, spk_args:
     end
 end
 
-function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
+function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; reverse::Bool = false)
     t = sol.t
     #rearrange into array of batch, neuron, time
     u = Array(sol)
@@ -123,11 +123,17 @@ function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs)
     current = real.(u)
 
     #find the local voltage maxima through the first derivative (current)
-    maxima = findall(diff(sign.(current), dims=3) .< 0)
+    if reverse
+        op = x -> x .> 0
+    else
+        op = x -> x .< 0
+    end
+
+    maxima = findall(op(diff(sign.(current), dims=3)))
     zero_i = current[maxima]
     peak_voltages = voltage[maxima]
     #check voltages at these peaks are above the threshold
-    above_threshold = abs.(peak_voltages) .> spk_args.threshold
+    above_threshold = peak_voltages .> spk_args.threshold
     spikes = maxima[above_threshold]
 
     #retrieve the indices of the spiking neurons
@@ -163,7 +169,7 @@ end
 """
 Convert the potential of a neuron at an arbitrary point in time to its phase relative to a reference
 """
-function potential_to_phase(potential::AbstractMatrix, t::Real, offset::Real, spk_args::SpikingArgs)
+function potential_to_phase(potential::AbstractArray, t::Real, offset::Real, spk_args::SpikingArgs)
     #find the angle of a neuron representing 0 phase at the current moment in time
     current_zero = angle.(phase_to_potential(0.0, [t], offset, spk_args))
     #get the arc subtended in the complex plane between that reference and our neuron potentials
