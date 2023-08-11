@@ -18,30 +18,37 @@ function bind(x::AbstractArray, y::AbstractArray)
     return y
 end
 
-function bind(x::SpikeTrain, y::SpikeTrain, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs)
+function bind(x::SpikeTrain, y::SpikeTrain, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs; return_solution::Bool = false)
     #set up functions to define the neuron's differential equations
     k = neuron_constant(spk_args)
-    k2 = -1 * imag(k) + real(k)
+    k_osc = imag(k)
+    k_mem = real(k) + 0.0im
+    k_rvs = real(k) + -1.0im * imag(k)
+
     #get the number of batches & output neurons
     output_shape = x.shape
 
-    #integrate current through the first compartment that will flow through into the second
-    #set up the first compartment
-    u0 = zeros(ComplexF32, output_shape)
-    dzdt_x(u, p, t) = k .* u + spike_current(x, t, spk_args)
-    #solve the ODE for the first compartment over the given time span
-    prob_x = ODEProblem(dzdt_x, u0, tspan)
-    sol_x = solve(prob_x, Heun(), adaptive=false, dt=spk_args.dt)
+    #create a reference oscillator to generate complex values for each moment in time
+    sol_ref(t) = exp.(1im .* k_osc .* (t .- x.offset))
 
-    #set up the second compartment
-    #current will flow into the second compartment enabled by the second input and flow backards in time
-    dzdt_y(u, p, t) = k2 .* u .+ sol_x(t) .* spike_current(y, t, spk_args)
-    #solve the second compartment
-    prob_y = ODEProblem(dzdt_y, u0, tspan)
-    sol_y = solve(prob_y, Heun(), adaptive=false, dt=spk_args.dt)
+    #set up the memory compartment
+    u0_mem = zeros(ComplexF32, output_shape)
+    dzdt_mem(u, p, t) = k_mem .* u .+ sol_ref(t) .* spike_current(x, t, spk_args)
+    #solve the memory compartment
+    prob_mem = ODEProblem(dzdt_mem, u0_mem, tspan)
+    sol_mem = solve(prob_mem, Heun(), adaptive=false, dt=spk_args.dt)
 
-    return sol_x, sol_y
-    indices, times = find_spikes_rf(sol_y, spk_args)
+    #set up the countdown compartment
+    u0_rvs = zeros(ComplexF32, output_shape)
+    dzdt_rvs(u, p, t) = k_rvs .* u .+ sol_mem(t) .* spike_current(y, t, spk_args)
+    prob_rvs = ODEProblem(dzdt_rvs, u0_rvs, tspan)
+    sol_rvs = solve(prob_rvs,  Heun(), adaptive=false, dt=spk_args.dt)
+
+    if return_solution
+        return sol_mem, sol_rvs
+    end
+
+    indices, times = find_spikes_rf(sol_rvs, spk_args, reverse=true)
     #construct the spike train and call for the next layer
     train = SpikeTrain(indices, times, output_shape, x.offset + spk_args.t_period / 4.0)
     next_call = SpikingCall(train, spk_args, tspan)
