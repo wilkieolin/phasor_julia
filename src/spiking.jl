@@ -26,6 +26,7 @@ struct SpikingArgs
     dt::Real
 end
 
+
 function SpikingArgs(; leakage::Real = -0.2, 
                     t_period::Real = 1.0,
                     t_window::Real = 0.01,
@@ -160,7 +161,11 @@ end
 """
 Convert a static phase to the complex potential of an R&F neuron
 """
-function phase_to_potential(phase::Real, t::Array{<:Real}, offset::Real, spk_args::SpikingArgs)
+function phase_to_potential(phase::Real, ts::AbstractVector, offset::Real, spk_args::SpikingArgs)
+    return [phase_to_potential(phase, t, offset, spk_args) for t in ts]
+end
+
+function phase_to_potential(phase::Real, t::Real, offset::Real, spk_args::SpikingArgs)
     period = spk_args.t_period
     potential = exp.(1im .* (2*pi.*(t .- offset)/(period) .- pi*phase))
     return potential
@@ -171,11 +176,18 @@ Convert the potential of a neuron at an arbitrary point in time to its phase rel
 """
 function potential_to_phase(potential::AbstractArray, t::Real, offset::Real, spk_args::SpikingArgs)
     #find the angle of a neuron representing 0 phase at the current moment in time
-    current_zero = angle.(phase_to_potential(0.0, [t], offset, spk_args))
+    current_zero = angle(phase_to_potential(0.0, t, offset, spk_args))
     #get the arc subtended in the complex plane between that reference and our neuron potentials
     arc = current_zero .- angle.(potential)
     #normalize by py and shift to -1, 1
     phase = mod.((arc ./ pi .+ 1.0), 2.0) .- 1.0
+end
+
+function potential_to_phase(potential::AbstractArray, t::AbstractVector, dim::Int, offset::Real, spk_args::SpikingArgs)
+    @assert size(potential, dim) == length(t) "Time dimensions must match"
+    phases = [potential_to_phase(uslice, t[i], offset, spk_args) for (i, uslice) in enumerate(eachslice(potential, dims=dim))]
+
+    return phases
 end
 
 """
