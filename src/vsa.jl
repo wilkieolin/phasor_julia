@@ -137,17 +137,17 @@ function remap_phase(x::AbstractVecOrMat)
     return x
 end
 
-function similarity(x::AbstractArray, y::AbstractArray, dims::Int)
+function similarity(x::AbstractArray, y::AbstractArray; dim::Int = 1)
     dx = cos.(pi .* (x .- y))
-    s = mean(dx, dims = dims)
+    s = mean(dx, dims = dim)
     return s
 end
 
-function similarity_self(x::AbstractMatrix)
-    return similarity_outer(x, x)
+function similarity_self(x::AbstractMatrix, dims::Int...)
+    return similarity_outer(x, x, dims...)
 end
 
-function similarity_outer(x::AbstractMatrix, y::AbstractMatrix)
-    s = [similarity(x[i:i, :], y[j:j,:], 2)[1] for i in 1:size(x)[1], j in 1:size(y)[1]]
+function similarity_outer(x::AbstractArray, y::AbstractArray, dims::Int...)
+    s = [similarity(xs, ys) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)]
     return s
 end
