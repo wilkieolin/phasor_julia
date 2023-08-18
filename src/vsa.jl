@@ -137,15 +137,6 @@ function remap_phase(x::AbstractVecOrMat)
     return x
 end
 
-function scale_potential(u::Complex)
-    a = abs(u)
-    if a == 0.0
-        return u
-    else
-        return u / a
-    end
-end
-
 function similarity(x::AbstractArray, y::AbstractArray; dim::Int = 1)
     dx = cos.(pi .* (x .- y))
     s = mean(dx, dims = dim)
