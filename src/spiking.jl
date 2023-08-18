@@ -153,9 +153,33 @@ function neuron_constant(spk_args::SpikingArgs)
     return k
 end
 
+function normalize_potential(u::Complex)
+    a = abs(u)
+    if a == 0.0
+        return u
+    else
+        return u / a
+    end
+end
+
 function period_to_angfreq(t_period::Real)
     angular_frequency = 2 * pi / t_period
     return angular_frequency
+end
+
+function phase_memory(x::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
+    #set up functions to define the neuron's differential equations
+    k = neuron_constant(spk_args)
+
+    #set up compartments for each sample
+    u0 = zeros(ComplexF32, x.shape)
+    #resonate in time with the input spikes
+    dzdt(u, p, t) = k .* u .+ spike_current(x, t, spk_args)
+    #solve the memory compartment
+    prob = ODEProblem(dzdt, u0, tspan)
+    sol = solve(prob, Heun(), adaptive=false, dt=spk_args.dt)
+
+    return sol
 end
 
 """
