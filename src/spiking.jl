@@ -114,11 +114,14 @@ function bias_current(bias::AbstractVecOrMat, t::Real, t_offset::Real, spk_args:
 end
 
 function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; reverse::Bool = false)
+    @assert typeof(sol.u) <: Vector{<:Matrix{<:Complex}} "This method is for R&F neurons with complex potential"    
     t = sol.t
-    #rearrange into array of batch, neuron, time
     u = Array(sol)
 
-    @assert typeof(sol.u) <: Vector{<:Matrix{<:Complex}} "This method is for R&F neurons with complex potential"
+    return find_spikes_rf(u, t, spk_args, reverse)
+end
+
+function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingArgs; reverse::Bool = false)
     #if potential is from an R&F neuron, it is complex and voltage is the imaginary part
     voltage = imag.(u)
     current = real.(u)
@@ -160,6 +163,10 @@ function normalize_potential(u::Complex)
     else
         return u / a
     end
+end
+
+function spiking_offset(spk_args::SpikingArgs)
+    return spk_args.t_period / 4.0
 end
 
 function period_to_angfreq(t_period::Real)

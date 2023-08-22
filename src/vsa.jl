@@ -18,7 +18,7 @@ function bind(x::AbstractArray, y::AbstractArray)
     return y
 end
 
-function bind(x::SpikeTrain, y::SpikeTrain, tspan::Tuple{<:Real, <:Real}, spk_args::SpikingArgs; return_solution::Bool = false)
+function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
     #set up functions to define the neuron's differential equations
     k = neuron_constant(spk_args)
     k_osc = imag(k)
@@ -50,7 +50,7 @@ function bind(x::SpikeTrain, y::SpikeTrain, tspan::Tuple{<:Real, <:Real}, spk_ar
 
     indices, times = find_spikes_rf(sol_rvs, spk_args, reverse=true)
     #construct the spike train and call for the next layer
-    train = SpikeTrain(indices, times, output_shape, x.offset + spk_args.t_period / 4.0)
+    train = SpikeTrain(indices, times, output_shape, x.offset + spiking_offset(spk_args))
     next_call = SpikingCall(train, spk_args, tspan)
     return next_call
 
@@ -61,6 +61,23 @@ function bundle(x::AbstractMatrix; dims)
     bz = sum(xz, dims = dims)
     y = complex_to_angle(bz)
     return y
+end
+
+function bundle(x::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs=default_spk_args(), dims)
+    #let compartments resonate in sync with inputs
+    sol = phase_memory(x, tspan=tspan, spk_args=spk_args)
+    #extract their potentials
+    u = Array(sol)
+    norm_u = normalize_potential.(u)
+    #combine the normalized potentials (interfere) along the bundling axis
+    bundled = sum(norm_u, dims=dims)
+    #detect spiking outputs
+    new_dims = setdiff(1:ndims(bundled), dims)
+    out_shape = (size(bundled, d) for d in new_dims)
+    out_inds, out_tms = find_spikes_rf(bundled, sol.t, spk_args)
+    out_offset = x.offset + spiking_offset(spk_args)
+    out_train = SpikeTrain(out_inds, out_tms, out_shape, out_offset)
+    return out_train
 end
 
 function bundle_project(x::AbstractMatrix, w::AbstractMatrix, b::AbstractVecOrMat)
@@ -85,7 +102,7 @@ function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, t
     #convert the full solution (potentials) to spikes
     indices, times = find_spikes_rf(sol, spk_args)
     #construct the spike train and call for the next layer
-    train = SpikeTrain(indices, times, output_shape, x.offset + spk_args.t_period / 4.0)
+    train = SpikeTrain(indices, times, output_shape, x.offset + spiking_offset(spk_args))
     next_call = SpikingCall(train, spk_args, tspan)
     return next_call
 end
@@ -105,7 +122,7 @@ function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat,
     #convert the full solution (potentials) to spikes
     indices, times = find_spikes_rf(sol, spk_args)
     #construct the spike train and call for the next layer
-    train = SpikeTrain(indices, times, output_shape, x.offset + spk_args.t_period / 4.0)
+    train = SpikeTrain(indices, times, output_shape, x.offset + spiking_offset(spk_args))
     next_call = SpikingCall(train, spk_args, tspan)
     return next_call
 end
@@ -141,6 +158,23 @@ function similarity(x::AbstractArray, y::AbstractArray; dim::Int = 1)
     dx = cos.(pi .* (x .- y))
     s = mean(dx, dims = dim)
     return s
+end
+
+function similarity(x::SpikeTrain, y::SpikeTrain, dim::Int = 1; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
+    sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
+    sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
+
+    u_x = normalize_potential.(Array(sol_x))
+    u_y = normalize_potential.(Array(sol_y))
+
+    interference = abs.(u_x .+ u_y)
+    magnitude = clamp.(interference, 0.0, 2.0)
+    half_angle = acos.(0.5 .* magnitude)
+    sim = cos.(2.0 .* half_angle)
+    avg_sim = mean(sim, dims=dim)
+    
+    return avg_sim
+
 end
 
 function similarity_self(x::AbstractMatrix, dims::Int...)
