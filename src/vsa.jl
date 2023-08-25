@@ -187,3 +187,8 @@ function similarity_outer(x::AbstractArray, y::AbstractArray, dims::Int...)
     s = stack([similarity(xs, ys) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)])
     return s
 end
+
+function similarity_outer(xv::Vector{<:SpikeTrain}, yv::Vector{<:SpikeTrain})
+    s = [similarity(x, y) for x in xv, y in yv]
+    return s
+end

@@ -8,6 +8,10 @@ struct SpikeTrain
     offset::Real
 end
 
+function Base.eachslice(x::SpikeTrain; dim::Int)
+
+end
+
 struct LocalCurrent
     current_fn::Function
     shape::Tuple
@@ -97,7 +101,7 @@ function spike_current(train::SpikeTrain, t::Real, spk_args::SpikingArgs)
     return current
 end
 
-function bias_current(bias::AbstractVecOrMat, t::Real, t_offset::Real, spk_args::SpikingArgs)
+function bias_current(bias::AbstractArray, t::Real, t_offset::Real, spk_args::SpikingArgs)
     #get constants
     t_bias = spk_args.t_period / 2.0
     t_window = spk_args.t_window
@@ -114,7 +118,7 @@ function bias_current(bias::AbstractVecOrMat, t::Real, t_offset::Real, spk_args:
 end
 
 function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; reverse::Bool = false)
-    @assert typeof(sol.u) <: Vector{<:Matrix{<:Complex}} "This method is for R&F neurons with complex potential"    
+    @assert typeof(sol.u) <: Vector{<:Array{<:Complex}} "This method is for R&F neurons with complex potential"    
     t = sol.t
     u = Array(sol)
 
@@ -226,7 +230,7 @@ Converts a matrix of phases into a spike train via phase encoding
 
 phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs, repeats::Int = 1, offset::Real = 0.0)
 """
-function phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs; repeats::Int = 1, offset::Real = 0.0)
+function phase_to_train(phases::AbstractArray, spk_args::SpikingArgs; repeats::Int = 1, offset::Real = 0.0)
     t_phase0 = spk_args.t_period / 2.0
     shape = phases |> size
     indices = collect(CartesianIndices(shape)) |> vec
@@ -243,7 +247,7 @@ function phase_to_train(phases::AbstractMatrix, spk_args::SpikingArgs; repeats::
     return train
 end
 
-function time_to_phase(times::AbstractVecOrMat, period::Real, offset::Real)
+function time_to_phase(times::AbstractArray, period::Real, offset::Real)
     times = mod.((times .- offset), period) ./ period
     times = (times .- 0.5) .* 2.0
     return times
