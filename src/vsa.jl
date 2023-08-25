@@ -129,18 +129,18 @@ function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat,
     return next_call
 end
 
-function bind(x::AbstractMatrix; dims)
+function bind(x::AbstractArray; dims)
     bz = sum(x, dims = dims)
     y = remap_phase(bz)
     return y
 end
 
-function bind(x::AbstractMatrix, y::AbstractMatrix;)
+function bind(x::AbstractArray, y::AbstractArray;)
     y = remap_phase(x .+ y)
     return y
 end
 
-function complex_to_angle(x::AbstractVecOrMat)
+function complex_to_angle(x::AbstractArray)
     return angle.(x) ./ pi
 end
 
@@ -149,7 +149,7 @@ function random_symbols(size::Tuple{Vararg{Int}})
     return y
 end
 
-function remap_phase(x::AbstractVecOrMat)
+function remap_phase(x::AbstractArray)
     x = x .+ 1
     x = mod.(x, 2.0)
     x = x .- 1
@@ -179,11 +179,11 @@ function similarity(x::SpikeTrain, y::SpikeTrain, dim::Int = 1; tspan::Tuple{<:R
 
 end
 
-function similarity_self(x::AbstractMatrix, dims::Int...)
+function similarity_self(x::AbstractArray, dims::Int...)
     return similarity_outer(x, x, dims...)
 end
 
 function similarity_outer(x::AbstractArray, y::AbstractArray, dims::Int...)
-    s = [similarity(xs, ys) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)]
+    s = stack([similarity(xs, ys) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)])
     return s
 end

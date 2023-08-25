@@ -119,14 +119,16 @@ end
 
 function attend(q::Array{<:Real, 3}, k::Array{<:Real, 3}, v::Array{<:Real, 3})
     #compute qk scores
-    #(c b a) x (c b a) -> (b b a)
+    #produces (1 b qt kt)
     scores = similarity_outer(q, k, 2)
-    #do complex-domain matrix multiply of values by scores
-    values = angle_to_complex(v)
-    #(b b a) * (c b a)
-    output = scores * values
+    #do complex-domain matrix multiply of values by scores (v kt b)
+    v = angle_to_complex(v)
+    #multiply each value by the scores across batch
+    #(v kt b) * (1 b qt kt) ... (v kt) * (kt qt) over b
+    output = stack([v[:,:,i] * scores[1,i,:,:]' for i in axes(v, 3)])
+    output = complex_to_angle(output)
+    return output
 end
-
 
 
 function (a::PhasorAttention)(query::AbstractArray, keyvalue::AbstractArray)
