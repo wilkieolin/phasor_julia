@@ -109,13 +109,6 @@ end
 """
 Phasor QKV Attention
 """
-struct PhasorAttention{M<:AbstractArray, B} <: Lux.AbstractExplicitLayer
-    shape::Tuple{<:Int, <:Int}
-    in_dims::Int
-    out_dims::Int
-    init_weight::Function
-    init_bias::Function
-end
 
 function attend(q::Array{<:Real, 3}, k::Array{<:Real, 3}, v::Array{<:Real, 3})
     #compute qk scores
@@ -129,6 +122,16 @@ function attend(q::Array{<:Real, 3}, k::Array{<:Real, 3}, v::Array{<:Real, 3})
     output = complex_to_angle(output)
     return output
 end
+
+struct PhasorAttention{M<:AbstractArray, B} <: Lux.AbstractExplicitLayer
+    shape::Tuple{<:Int, <:Int}
+    in_dims::Int
+    out_dims::Int
+    init_weight::Function
+    init_bias::Function
+end
+
+
 
 
 function (a::PhasorAttention)(query::AbstractArray, keyvalue::AbstractArray)
