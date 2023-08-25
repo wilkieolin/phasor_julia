@@ -118,7 +118,7 @@ function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; reverse::Bool =
     t = sol.t
     u = Array(sol)
 
-    return find_spikes_rf(u, t, spk_args, reverse)
+    return find_spikes_rf(u, t, spk_args, reverse=reverse)
 end
 
 function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingArgs; reverse::Bool = false)

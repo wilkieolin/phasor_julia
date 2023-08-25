@@ -106,15 +106,79 @@ function (n::PhasorODE)(currents, ps, st)
     return soln, st
 end
 
+"""
+Phasor QKV Attention
+"""
+struct PhasorAttention{M<:AbstractArray, B} <: Lux.AbstractExplicitLayer
+    shape::Tuple{<:Int, <:Int}
+    in_dims::Int
+    out_dims::Int
+    init_weight::Function
+    init_bias::Function
+end
+
+function attend(q::Array{<:Real, 3}, k::Array{<:Real, 3}, v::Array{<:Real, 3})
+    #compute qk scores
+    #(c b a) x (c b a) -> (b b a)
+    scores = similarity_outer(q, k, 2)
+    #do complex-domain matrix multiply of values by scores
+    values = angle_to_complex(v)
+    #(b b a) * (c b a)
+    output = scores * values
+end
+
+
+
+function (a::PhasorAttention)(query::AbstractArray, keyvalue::AbstractArray)
+    q = a.query_network(query)
+    k = a.key_network(keyvalue)
+    v = a.value_network(keyvalue)
+
+    result = attend(q, k, v)
+
+    output = a.output_network(result)
+
+    return output
+end
+    
+
+function (a::PhasorDense)(x::SpikingCall, params::LuxParams, state::NamedTuple; return_solution::Bool=false)
+    y = bundle_project(x.train, params.weight, params.bias, x.t_span, x.spk_args, return_solution=return_solution)
+    return y, state
+end
+
+    
+
+
+"""
+Phasor Self-Attention Module
+"""
+struct PhasorSA{M<:AbstractArray, B} <: Lux.AbstractExplicitLayer
+    shape::Tuple{<:Int, <:Int}
+    n_heads::Int
+    in_dims::Int
+    out_dims::Int
+    init_weight::Function
+    init_bias::Function
+
+    function PhasorDense(W::M, b::B) where {M<:AbstractArray, B<:AbstractVector}
+      new{M,typeof(b)}(size(W), size(W,2), size(W,1), () -> copy(W), () -> copy(b))
+    end
+end
+
+"""
+Other utilities
+"""
+
 
 function quadrature_loss(phases::AbstractArray, truth::AbstractArray)
     targets = 0.5 .* truth
-    sim = similarity(phases, targets, 1)
+    sim = similarity(phases, targets, dim = 1)
     return 1.0 .- sim
 end
 
 function similarity_loss(phases::AbstractArray, truth::AbstractArray, dim::Int)
-    sim = similarity(phases, truth, dim)
+    sim = similarity(phases, truth, dim = dim)
     return 1.0 .- sim
 end
 

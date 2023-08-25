@@ -7,6 +7,7 @@ function angle_to_complex(x::AbstractArray)
     k = convert(ComplexF32, pi * (0.0 + 1.0im))
     return exp.(k .* x)
 end
+
 function bind(x::AbstractArray; dims)
     bz = sum(x, dims = dims)
     y = remap_phase(bz)
@@ -98,6 +99,7 @@ function bundle_project(x::SpikeTrain, w::AbstractMatrix, b::AbstractVecOrMat, t
     sol = solve(prob, Heun(), adaptive=false, dt=spk_args.dt)
     #option for early exit (mostly for debug)
     if return_solution return sol end
+
     #convert the full solution (potentials) to spikes
     indices, times = find_spikes_rf(sol, spk_args)
     #construct the spike train and call for the next layer
@@ -118,6 +120,7 @@ function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat,
     sol = solve(prob, Heun(), adaptive=false, dt=spk_args.dt)
     #option for early exit (mostly for debug)
     if return_solution return sol end
+    
     #convert the full solution (potentials) to spikes
     indices, times = find_spikes_rf(sol, spk_args)
     #construct the spike train and call for the next layer
