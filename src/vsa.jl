@@ -162,6 +162,15 @@ function similarity(x::AbstractArray, y::AbstractArray; dim::Int = 1)
     return s
 end
 
+function interference_similarity(interference::AbstractArray, dim::Int=1)
+    magnitude = clamp.(interference, 0.0, 2.0)
+    half_angle = acos.(0.5 .* magnitude)
+    sim = cos.(2.0 .* half_angle)
+    avg_sim = mean(sim, dims=dim)
+    
+    return avg_sim
+end
+
 function similarity(x::SpikeTrain, y::SpikeTrain, dim::Int = 1; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
     sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
     sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
@@ -170,10 +179,7 @@ function similarity(x::SpikeTrain, y::SpikeTrain, dim::Int = 1; tspan::Tuple{<:R
     u_y = normalize_potential.(Array(sol_y))
 
     interference = abs.(u_x .+ u_y)
-    magnitude = clamp.(interference, 0.0, 2.0)
-    half_angle = acos.(0.5 .* magnitude)
-    sim = cos.(2.0 .* half_angle)
-    avg_sim = mean(sim, dims=dim)
+    avg_sim = interference_similarity(interference, dim)
     
     return avg_sim
 
@@ -188,7 +194,18 @@ function similarity_outer(x::AbstractArray, y::AbstractArray, dims::Int...)
     return s
 end
 
-function similarity_outer(xv::Vector{<:SpikeTrain}, yv::Vector{<:SpikeTrain})
-    s = [similarity(x, y) for x in xv, y in yv]
-    return s
+#TODO - check prototype
+function similarity_outer(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), dims)
+    sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
+    sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
+
+    u_x = normalize_potential.(Array(sol_x))
+    u_y = normalize_potential.(Array(sol_y))
+
+    #add up along the slices
+    interference = stack([abs.(s_ux .+ s_uy) for s_ux in eachslice(u_x, dims=dims), s_uy in eachslice(u_y, dims=dims)])
+    avg_sim = interference_similarity(interference, 1)
+    
+    return avg_sim
+
 end
