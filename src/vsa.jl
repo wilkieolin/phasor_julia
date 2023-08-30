@@ -194,8 +194,7 @@ function similarity_outer(x::AbstractArray, y::AbstractArray, dims::Int...)
     return s
 end
 
-#TODO - check prototype
-function similarity_outer(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), dims)
+function similarity_outer(x::SpikeTrain, y::SpikeTrain, dims; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
     sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
     sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
 
@@ -203,9 +202,7 @@ function similarity_outer(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:R
     u_y = normalize_potential.(Array(sol_y))
 
     #add up along the slices
-    interference = stack([abs.(s_ux .+ s_uy) for s_ux in eachslice(u_x, dims=dims), s_uy in eachslice(u_y, dims=dims)])
-    avg_sim = interference_similarity(interference, 1)
-    
+    interference = [abs.(u_xs .+ u_ys) for u_xs in eachslice(u_x, dims=dims), u_ys in eachslice(u_y, dims=dims)]
+    avg_sim = interference_similarity.(interference, 1)
     return avg_sim
-
 end
