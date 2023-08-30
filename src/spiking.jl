@@ -8,10 +8,6 @@ struct SpikeTrain
     offset::Real
 end
 
-function Base.eachslice(x::SpikeTrain; dim::Int)
-
-end
-
 struct LocalCurrent
     current_fn::Function
     shape::Tuple
