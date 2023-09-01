@@ -123,6 +123,19 @@ function attend(q::Array{<:Real, 3}, k::Array{<:Real, 3}, v::Array{<:Real, 3})
     return output
 end
 
+function attend(q::SpikeTrain, k::SpikeTrain, v::SpikeTrain; tspan::Tuple{<:Real, <:Real}=(0.0, 10.0), spk_args::SpikingArgs=default_spk_args(), return_solution::Bool = false)
+    #compute the similarity between the spike trains
+    #produces [q k][1 1 time]
+    scores = similarity_outer(q, k, 2)
+    #convert the values to potentials
+    values = phase_memory(v, tspan=tspan, spk_args=spk_args)
+    #multiply by the scores found at each time step
+    output_u = stack([values[:,:,b,t] * scores[1,1,t,:,:]' for b in axes(v_u, 3) t in axes(v_u,4)])
+    if return_solution return output_u end
+    output = find_spikes_rf(output_u, values.t, spk_args)
+    return output
+end
+
 struct PhasorAttention{M<:AbstractArray, B} <: Lux.AbstractExplicitLayer
     shape::Tuple{<:Int, <:Int}
     in_dims::Int

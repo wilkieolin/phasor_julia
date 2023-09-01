@@ -203,6 +203,6 @@ function similarity_outer(x::SpikeTrain, y::SpikeTrain, dims; tspan::Tuple{<:Rea
 
     #add up along the slices
     interference = [abs.(u_xs .+ u_ys) for u_xs in eachslice(u_x, dims=dims), u_ys in eachslice(u_y, dims=dims)]
-    avg_sim = interference_similarity.(interference, 1)
+    avg_sim = stack(interference_similarity.(interference, 1))
     return avg_sim
 end
