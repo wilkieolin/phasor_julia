@@ -130,8 +130,10 @@ function attend(q::SpikeTrain, k::SpikeTrain, v::SpikeTrain; tspan::Tuple{<:Real
     #convert the values to potentials
     values = phase_memory(v, tspan=tspan, spk_args=spk_args)
     #multiply by the scores found at each time step
-    output_u = stack([values[:,:,b,t] * scores[1,1,t,:,:]' for b in axes(v_u, 3) t in axes(v_u,4)])
-    if return_solution return output_u end
+    output_u = stack([values[:,:,b,t] * scores[1,1,t,:,:]' for b in axes(v_u, 3), t in axes(v_u,4)])
+    if return_solution 
+        return output_u 
+    end
     output = find_spikes_rf(output_u, values.t, spk_args)
     return output
 end
