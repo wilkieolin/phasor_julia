@@ -62,13 +62,17 @@ function bundle(x::AbstractArray; dims::Int)
     return y
 end
 
-function bundle(x::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs=default_spk_args(), dims)
+function bundle(x::SpikeTrain; dims::Int, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs=default_spk_args(), return_solution::Bool=false)
     #let compartments resonate in sync with inputs
     sol = phase_memory(x, tspan=tspan, spk_args=spk_args)
     #extract their potentials
     u = Array(sol)
     #combine the potentials (interfere) along the bundling axis
     bundled = sum(u, dims=dims)
+    if return_solution
+        return bundled
+    end
+    
     #detect spiking outputs
     new_dims = setdiff(1:ndims(bundled), dims)
     out_shape = (size(bundled, d) for d in new_dims)
