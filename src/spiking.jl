@@ -121,19 +121,15 @@ function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; reverse::Bool =
     return find_spikes_rf(u, t, spk_args, reverse=reverse)
 end
 
-function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingArgs; reverse::Bool = false)
+function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingArgs; dim::Int=3, reverse::Bool = false)
     #if potential is from an R&F neuron, it is complex and voltage is the imaginary part
     voltage = imag.(u)
     current = real.(u)
 
     #find the local voltage maxima through the first derivative (current)
-    if reverse
-        op = x -> x .> 0
-    else
-        op = x -> x .< 0
-    end
-
-    maxima = findall(op(diff(sign.(current), dims=3)))
+    op = x -> x .< 0
+    #find maxima along the temporal dimension
+    maxima = findall(op(diff(sign.(current), dims=dim)))
     zero_i = current[maxima]
     peak_voltages = voltage[maxima]
     #check voltages at these peaks are above the threshold
@@ -141,11 +137,12 @@ function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingAr
     spikes = maxima[above_threshold]
 
     #retrieve the indices of the spiking neurons
-    batch = getindex.(spikes, 1)
-    neuron = getindex.(spikes, 2)
-    channels = CartesianIndex.(batch, neuron)
+    ax = 1:ndims(u) |> collect
+    spatial_ax = setdiff(ax, dim)
+    spatial_idx = [getindex.(spikes, i) for i in spatial_ax]
+    channels = CartesianIndex.(spatial_idx...) 
     #retrieve the times they spiked at
-    times = t[getindex.(spikes, 3)]
+    times = t[getindex.(spikes, dim)]
     
     return channels, times
 end
