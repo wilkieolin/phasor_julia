@@ -74,10 +74,10 @@ function bundle(x::SpikeTrain; dims::Int, tspan::Tuple{<:Real, <:Real} = (0.0, 1
     end
     
     #detect spiking outputs
-    new_dims = setdiff(1:ndims(bundled), dims)
-    out_shape = (size(bundled, d) for d in new_dims)
+    out_shape = size(bundled)[1:end-1]
     out_inds, out_tms = find_spikes_rf(bundled, sol.t, spk_args)
     out_offset = x.offset + spiking_offset(spk_args)
+    return out_inds, out_tms, out_shape, out_offset
     out_train = SpikeTrain(out_inds, out_tms, out_shape, out_offset)
     return out_train
 end

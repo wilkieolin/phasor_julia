@@ -113,15 +113,20 @@ function bias_current(bias::AbstractArray, t::Real, t_offset::Real, spk_args::Sp
     end
 end
 
-function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; reverse::Bool = false)
+function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; dim::Int)
     @assert typeof(sol.u) <: Vector{<:Array{<:Complex}} "This method is for R&F neurons with complex potential"    
     t = sol.t
     u = Array(sol)
 
-    return find_spikes_rf(u, t, spk_args, reverse=reverse)
+    return find_spikes_rf(u, t, spk_args, dim=dim)
 end
 
-function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingArgs; dim::Int=3, reverse::Bool = false)
+function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingArgs; dim::Int=-1, reverse::Bool = false)
+    #choose the last dimension as default
+    if dim == -1
+        dim = ndims(u)
+    end
+
     #if potential is from an R&F neuron, it is complex and voltage is the imaginary part
     voltage = imag.(u)
     current = real.(u)
