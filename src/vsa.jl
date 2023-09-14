@@ -22,34 +22,32 @@ end
 function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
     #set up functions to define the neuron's differential equations
     k = neuron_constant(spk_args)
-    k_osc = imag(k)
-    k_mem = real(k) + 0.0im
-    k_rvs = real(k) + -1.0im * imag(k)
 
     #get the number of batches & output neurons
     output_shape = x.shape
 
     #create a reference oscillator to generate complex values for each moment in time
-    sol_ref(t) = exp.(1im .* k_osc .* (t .- x.offset))
+    sol_ref(t) = reshape(exp.(k .* (t .- x.offset)), (1,1,:))
 
-    #set up the memory compartment
-    u0_mem = zeros(ComplexF32, output_shape)
-    dzdt_mem(u, p, t) = k_mem .* u .+ sol_ref(t) .* spike_current(x, t, spk_args)
-    #solve the memory compartment
-    prob_mem = ODEProblem(dzdt_mem, u0_mem, tspan)
-    sol_mem = solve(prob_mem, Heun(), adaptive=false, dt=spk_args.dt)
-
-    #set up the countdown compartment
-    u0_rvs = zeros(ComplexF32, output_shape)
-    dzdt_rvs(u, p, t) = k_rvs .* u .+ sol_mem(t) .* spike_current(y, t, spk_args)
-    prob_rvs = ODEProblem(dzdt_rvs, u0_rvs, tspan)
-    sol_rvs = solve(prob_rvs,  Heun(), adaptive=false, dt=spk_args.dt)
+    #find the complex state induced by the spikes
+    sol_x = phase_memory(x, tspan=tspan, spk_args=spk_args)
+    sol_y = phase_memory(y, tspan=tspan, spk_args=spk_args)
 
     if return_solution
-        return sol_mem, sol_rvs
+        return sol_x, sol_y
     end
 
-    indices, times = find_spikes_rf(sol_rvs, spk_args, reverse=true)
+    u_x = Array(sol_x)
+    u_y = Array(sol_y)
+    u_ref = sol_ref(sol_y.t)
+
+    #find the first chord
+    chord_x = u_x
+    #find the second chord
+    chord_y = u_x .* (u_y .- u_ref) .* conj(u_ref)
+
+    u_output = chord_x .+ chord_y
+    indices, times = find_spikes_rf(u_output, spk_args)
     #construct the spike train and call for the next layer
     train = SpikeTrain(indices, times, output_shape, x.offset + spiking_offset(spk_args))
     next_call = SpikingCall(train, spk_args, tspan)
@@ -57,7 +55,7 @@ function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0,
 
 end
 
-function bundle(x::AbstractMatrix; dims)
+function bundle(x::AbstractArray; dims::Int)
     xz = angle_to_complex(x)
     bz = sum(xz, dims = dims)
     y = complex_to_angle(bz)
