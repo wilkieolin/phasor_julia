@@ -79,7 +79,7 @@ end
 
 function spike_current(train::SpikeTrain, t::Real, spk_args::SpikingArgs)
     #get constants
-    t_window = spk_args.t_window + 1e-4
+    t_window = spk_args.t_window
     dt = spk_args.dt
 
     #determine which synapses will have incoming currents
@@ -200,7 +200,8 @@ end
 
 function phase_to_potential(phase::Real, t::Real, offset::Real, spk_args::SpikingArgs)
     period = spk_args.t_period
-    potential = exp.(1im .* (2*pi.*(t .- offset)/(period) .- pi*phase))
+    k = 1im * imag(neuron_constant(spk_args))
+    potential = exp.(k .* ((t .- offset) .- (phase + 1)/2))
     return potential
 end
 
@@ -216,13 +217,13 @@ function potential_to_phase(potential::AbstractArray, t::Real, offset::Real, spk
     phase = mod.((arc ./ pi .+ 1.0), 2.0) .- 1.0
 end
 
-function potential_to_phase(potential::AbstractArray, t::AbstractVector, dim::Int, offset::Real, spk_args::SpikingArgs)
+function potential_to_phase(potential::AbstractArray, t::AbstractVector; dim::Int, spk_args::SpikingArgs, offset::Real=0.0)
     @assert size(potential, dim) == length(t) "Time dimensions must match"
     phases = [potential_to_phase(uslice, t[i], offset, spk_args) for (i, uslice) in enumerate(eachslice(potential, dims=dim))]
-
+    phases = stack(phases)
+    
     return phases
 end
-
 """
 Converts a matrix of phases into a spike train via phase encoding
 
