@@ -67,8 +67,9 @@ function bundle(x::SpikeTrain; dims::Int, tspan::Tuple{<:Real, <:Real} = (0.0, 1
     sol = phase_memory(x, tspan=tspan, spk_args=spk_args)
     #extract their potentials
     u = Array(sol)
+    nu = normalize_potential.(u)
     #combine the potentials (interfere) along the bundling axis
-    bundled = sum(u, dims=dims)
+    bundled = sum(nu, dims=dims)
     if return_solution
         return bundled
     end
@@ -77,7 +78,6 @@ function bundle(x::SpikeTrain; dims::Int, tspan::Tuple{<:Real, <:Real} = (0.0, 1
     out_shape = size(bundled)[1:end-1]
     out_inds, out_tms = find_spikes_rf(bundled, sol.t, spk_args)
     out_offset = x.offset + spiking_offset(spk_args)
-    return out_inds, out_tms, out_shape, out_offset
     out_train = SpikeTrain(out_inds, out_tms, out_shape, out_offset)
     return out_train
 end
