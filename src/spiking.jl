@@ -85,7 +85,7 @@ function spike_current(train::SpikeTrain, t::Real, spk_args::SpikingArgs)
     #determine which synapses will have incoming currents
     #snap spike times to the grid points
     times = train.times .- mod.(train.times, dt)
-    active = (times .> (t - t_window)) .* (times .< (t))
+    active = (times .> (t - t_window)) .* (times .< (t + t_window))
     # relative_time = abs.(times .- t)
     # active = relative_time .<= t_window
     active_inds = train.indices[active]
@@ -121,7 +121,7 @@ function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; dim::Int)
     return find_spikes_rf(u, t, spk_args, dim=dim)
 end
 
-function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingArgs; dim::Int=-1, reverse::Bool = false)
+function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingArgs; dim::Int=-1)
     #choose the last dimension as default
     if dim == -1
         dim = ndims(u)
@@ -200,8 +200,8 @@ end
 
 function phase_to_potential(phase::Real, t::Real, offset::Real, spk_args::SpikingArgs)
     period = spk_args.t_period
-    k = 1im * imag(neuron_constant(spk_args))
-    potential = exp.(k .* ((t .- offset) .- (phase + 1)/2))
+    k = -1im * imag(neuron_constant(spk_args))
+    potential = exp.(k .* ((t .- offset) .+ (phase + 1)/2))
     return potential
 end
 
