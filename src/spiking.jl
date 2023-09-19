@@ -198,10 +198,14 @@ function phase_to_potential(phase::Real, ts::AbstractVector, offset::Real, spk_a
     return [phase_to_potential(phase, t, offset, spk_args) for t in ts]
 end
 
+function phase_to_potential(phase::AbstractArray, ts::AbstractVector, offset::Real, spk_args::SpikingArgs)
+    return [phase_to_potential(p, t, offset, spk_args) for p in phase, t in ts]
+end
+
 function phase_to_potential(phase::Real, t::Real, offset::Real, spk_args::SpikingArgs)
     period = spk_args.t_period
-    k = -1im * imag(neuron_constant(spk_args))
-    potential = exp.(k .* ((t .- offset) .+ (phase + 1)/2))
+    k = 1im * imag(neuron_constant(spk_args))
+    potential = exp.(k .* ((t .+ offset) .- (phase - 1)/2))
     return potential
 end
 
@@ -210,10 +214,10 @@ Convert the potential of a neuron at an arbitrary point in time to its phase rel
 """
 function potential_to_phase(potential::AbstractArray, t::Real, offset::Real, spk_args::SpikingArgs)
     #find the angle of a neuron representing 0 phase at the current moment in time
-    current_zero = angle(phase_to_potential(0.0, t, offset, spk_args))
+    current_zero = phase_to_potential(0.0, t, offset, spk_args)
     #get the arc subtended in the complex plane between that reference and our neuron potentials
-    arc = current_zero .- angle.(potential)
-    #normalize by py and shift to -1, 1
+    arc = angle(current_zero) .- angle.(potential) 
+    #normalize by pi and shift to -1, 1
     phase = mod.((arc ./ pi .+ 1.0), 2.0) .- 1.0
 end
 
