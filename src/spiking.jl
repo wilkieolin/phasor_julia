@@ -135,7 +135,6 @@ function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingAr
     op = x -> x .< 0
     #find maxima along the temporal dimension
     maxima = findall(op(diff(sign.(current), dims=dim)))
-    zero_i = current[maxima]
     peak_voltages = voltage[maxima]
     #check voltages at these peaks are above the threshold
     above_threshold = peak_voltages .> spk_args.threshold
