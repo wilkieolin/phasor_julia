@@ -19,6 +19,12 @@ function bind(x::AbstractArray, y::AbstractArray)
     return y
 end
 
+function bind(x::SpikingCall, y::SpikingCall)
+    train = bind(x.train, y.train; tspan=x.t_span, spk_args=x.spk_args)
+    next_call = SpikingCall(train, x.spk_args, x.t_span)
+    return next_call
+end
+
 function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
     #set up functions to define the neuron's differential equations
     k = neuron_constant(spk_args)
@@ -33,10 +39,6 @@ function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0,
     sol_x = phase_memory(x, tspan=tspan, spk_args=spk_args)
     sol_y = phase_memory(y, tspan=tspan, spk_args=spk_args)
 
-    if return_solution
-        return sol_x, sol_y
-    end
-
     u_x = Array(sol_x)
     u_y = Array(sol_y)
     u_ref = sol_ref(sol_y.t)
@@ -47,6 +49,10 @@ function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0,
     chord_y = u_x .* (u_y .- u_ref) .* conj(u_ref)
 
     u_output = chord_x .+ chord_y
+    if return_solution
+        return u_output
+    end
+    
     indices, times = find_spikes_rf(u_output, spk_args)
     #construct the spike train and call for the next layer
     train = SpikeTrain(indices, times, output_shape, x.offset + spiking_offset(spk_args))
@@ -60,6 +66,12 @@ function bundle(x::AbstractArray; dims::Int)
     bz = sum(xz, dims = dims)
     y = complex_to_angle(bz)
     return y
+end
+
+function bundle(x::SpikingCall; dims::Int)
+    train = bundle(x.train, dims=dims, tspan=x.t_span, spk_args=x.spk_args)
+    next_call = SpikingCall(train, x.spk_args, x.t_span)
+    return next_call
 end
 
 function bundle(x::SpikeTrain; dims::Int, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs=default_spk_args(), return_solution::Bool=false)
