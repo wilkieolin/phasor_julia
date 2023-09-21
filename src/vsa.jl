@@ -163,6 +163,15 @@ function complex_to_angle(x::AbstractArray)
     return angle.(x) ./ pi
 end
 
+function chance_level(nd::Int, samples::Int)
+    symbol_0 = random_symbols((1, nd))
+    symbols = random_symbols((samples, nd))
+    sim = similarity_outer(symbol_0, symbols, 1) |> vec
+    dev = std(sim)
+
+    return dev
+end
+
 function random_symbols(size::Tuple{Vararg{Int}})
     y = 2 .* rand(Float32, size) .- 1.0
     return y
