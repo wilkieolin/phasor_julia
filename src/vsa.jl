@@ -25,7 +25,7 @@ function bind(x::SpikingCall, y::SpikingCall)
     return next_call
 end
 
-function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
+function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false, unbind::Bool=false)
     #set up functions to define the neuron's differential equations
     k = neuron_constant(spk_args)
 
@@ -51,7 +51,13 @@ function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0,
     #find the first chord
     chord_x = u_x
     #find the second chord
-    chord_y = u_x .* (u_y .- u_ref) .* conj(u_ref)
+    dz = (u_y .- u_ref)
+    if unbind
+        dz = conj.(dz)
+        chord_y = u_x .* dz .* u_ref
+    else
+        chord_y = u_x .* dz .* conj(u_ref)
+    end
 
     u_output = chord_x .+ chord_y
     
@@ -229,20 +235,6 @@ function unbind(x::AbstractArray, y::AbstractArray)
     return y
 end
 
-function unbind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
-    #get the number of batches & output neurons
-    output_shape = x.shape
-    
-    u_out = bind(x, y, tspan=tspan, spk_args=spk_args, return_solution=true)
-    #rotate 180*
-    u_out = u_out .* (-1.0 + 0.0im)
-
-    if return_solution
-        return u_out
-    end
-
-    indices, times = find_spikes_rf(u_output, tbase, spk_args, dim=ndims(u_output))
-    #construct the spike train and call for the next layer
-    train = SpikeTrain(indices, times, output_shape, x.offset + spiking_offset(spk_args))
-    return train
+function unbind(x::SpikeTrain, y::SpikeTrain; kwargs...)
+    u_output = bind(x, y, unbind=true; kwargs...)
 end
