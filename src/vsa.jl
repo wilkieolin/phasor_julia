@@ -159,7 +159,7 @@ end
 function chance_level(nd::Int, samples::Int)
     symbol_0 = random_symbols((1, nd))
     symbols = random_symbols((samples, nd))
-    sim = similarity_outer(symbol_0, symbols, 1) |> vec
+    sim = similarity_outer(symbol_0, symbols, dims=1) |> vec
     dev = std(sim)
 
     return dev
@@ -206,11 +206,11 @@ function similarity(x::SpikeTrain, y::SpikeTrain; dim::Int = 1, tspan::Tuple{<:R
 
 end
 
-function similarity_self(x::AbstractArray; dims::Int...)
+function similarity_self(x::AbstractArray; dims)
     return similarity_outer(x, x, dims=dims)
 end
 
-function similarity_outer(x::AbstractArray, y::AbstractArray; dims::Int...)
+function similarity_outer(x::AbstractArray, y::AbstractArray; dims)
     s = stack([similarity(xs, ys) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)])
     return s
 end
