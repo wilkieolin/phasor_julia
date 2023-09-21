@@ -192,7 +192,7 @@ function interference_similarity(interference::AbstractArray, dim::Int=1)
     return avg_sim
 end
 
-function similarity(x::SpikeTrain, y::SpikeTrain, dim::Int = 1; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
+function similarity(x::SpikeTrain, y::SpikeTrain; dim::Int = 1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
     sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
     sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
 
@@ -206,11 +206,11 @@ function similarity(x::SpikeTrain, y::SpikeTrain, dim::Int = 1; tspan::Tuple{<:R
 
 end
 
-function similarity_self(x::AbstractArray, dims::Int...)
+function similarity_self(x::AbstractArray; dims::Int...)
     return similarity_outer(x, x, dims...)
 end
 
-function similarity_outer(x::AbstractArray, y::AbstractArray, dims::Int...)
+function similarity_outer(x::AbstractArray, y::AbstractArray; dims::Int...)
     s = stack([similarity(xs, ys) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)])
     return s
 end
