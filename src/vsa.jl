@@ -51,12 +51,10 @@ function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0,
     #find the first chord
     chord_x = u_x
     #find the second chord
-    dz = (u_y .- u_ref)
     if unbind
-        dz = conj.(dz)
-        chord_y = u_x .* dz .* u_ref
+        chord_y = u_x .* conj.((u_y .- u_ref)) .* u_ref
     else
-        chord_y = u_x .* dz .* conj(u_ref)
+        chord_y = u_x .* (u_y .- u_ref) .* conj(u_ref)
     end
 
     u_output = chord_x .+ chord_y
