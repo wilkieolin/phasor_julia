@@ -113,7 +113,7 @@ Phasor QKV Attention
 function attend(q::Array{<:Real, 3}, k::Array{<:Real, 3}, v::Array{<:Real, 3})
     #compute qk scores
     #produces (1 b qt kt)
-    scores = similarity_outer(q, k, 2)
+    scores = similarity_outer(q, k, dims=2)
     #do complex-domain matrix multiply of values by scores (v kt b)
     v = angle_to_complex(v)
     #multiply each value by the scores across batch
@@ -126,7 +126,7 @@ end
 function attend(q::SpikeTrain, k::SpikeTrain, v::SpikeTrain; tspan::Tuple{<:Real, <:Real}=(0.0, 10.0), spk_args::SpikingArgs=default_spk_args(), return_solution::Bool = false)
     #compute the similarity between the spike trains
     #produces [q k][1 1 time]
-    scores = similarity_outer(q, k, 2)
+    scores = similarity_outer(q, k, dims=2)
     #convert the values to potentials
     values = phase_memory(v, tspan=tspan, spk_args=spk_args)
     #multiply by the scores found at each time step

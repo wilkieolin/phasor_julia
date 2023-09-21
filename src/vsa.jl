@@ -207,7 +207,7 @@ function similarity(x::SpikeTrain, y::SpikeTrain; dim::Int = 1, tspan::Tuple{<:R
 end
 
 function similarity_self(x::AbstractArray; dims::Int...)
-    return similarity_outer(x, x, dims...)
+    return similarity_outer(x, x, dims=dims)
 end
 
 function similarity_outer(x::AbstractArray, y::AbstractArray; dims::Int...)
