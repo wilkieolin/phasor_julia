@@ -213,7 +213,7 @@ function similarity_outer(x::AbstractArray, y::AbstractArray, dims::Int...)
     return s
 end
 
-function similarity_outer(x::SpikeTrain, y::SpikeTrain, dims; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
+function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
     sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
     sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
 
