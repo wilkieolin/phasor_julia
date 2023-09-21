@@ -148,17 +148,6 @@ function bundle_project(x::LocalCurrent, w::AbstractMatrix, b::AbstractVecOrMat,
     return next_call
 end
 
-function bind(x::AbstractArray; dims)
-    bz = sum(x, dims = dims)
-    y = remap_phase(bz)
-    return y
-end
-
-function bind(x::AbstractArray, y::AbstractArray;)
-    y = remap_phase(x .+ y)
-    return y
-end
-
 function complex_to_angle(x::AbstractArray)
     return angle.(x) ./ pi
 end
@@ -233,4 +222,27 @@ function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, tspan::Tuple{<:Rea
     interference = [abs.(u_xs .+ u_ys) for u_xs in eachslice(u_x, dims=dims), u_ys in eachslice(u_y, dims=dims)]
     avg_sim = stack(interference_similarity.(interference, 1))
     return avg_sim
+end
+
+function unbind(x::AbstractArray, y::AbstractArray)
+    y = remap_phase(x .- y)
+    return y
+end
+
+function unbind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
+    #get the number of batches & output neurons
+    output_shape = x.shape
+    
+    u_out = bind(x, y, tspan=tspan, spk_args=spk_args, return_solution=true)
+    #rotate 180*
+    u_out = u_out .* (-1.0 + 0.0im)
+
+    if return_solution
+        return u_out
+    end
+
+    indices, times = find_spikes_rf(u_output, tbase, spk_args, dim=ndims(u_output))
+    #construct the spike train and call for the next layer
+    train = SpikeTrain(indices, times, output_shape, x.offset + spiking_offset(spk_args))
+    return train
 end
