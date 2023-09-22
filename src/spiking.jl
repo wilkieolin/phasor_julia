@@ -93,7 +93,7 @@ function vcat_trains(trains::Array{<:SpikeTrain,1})
     for (i, train) in enumerate(trains)
         old_indices = train.indices
         #add the new dimension for each index
-        new_indices = [CartesianIndex((i, Tuple(idx)...)[2:end]) for idx in old_indices]
+        new_indices = [CartesianIndex((i, Tuple(idx)[2:end]...)) for idx in old_indices]
         append!(all_indices, new_indices)
     end
 
