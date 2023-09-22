@@ -21,6 +21,8 @@ train_to_phase,
 zero_nans,
 cycle_correlation,
 cor_realvals,
+stack_trains,
+vcat_trains,
 
 #vsa
 bundle,

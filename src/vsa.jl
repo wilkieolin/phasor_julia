@@ -20,7 +20,7 @@ function bind(x::AbstractArray, y::AbstractArray)
 end
 
 function bind(x::SpikingCall, y::SpikingCall; kwargs...)
-    train = bind(x.train, y.train; tspan=x.t_span, spk_args=x.spk_args; kwargs...)
+    train = bind(x.train, y.train; tspan=x.t_span, spk_args=x.spk_args, kwargs...)
     next_call = SpikingCall(train, x.spk_args, x.t_span)
     return next_call
 end
@@ -28,6 +28,7 @@ end
 function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false, unbind::Bool=false)
     #set up functions to define the neuron's differential equations
     k = neuron_constant(spk_args)
+    tbase = tspan[1]:spk_args.dt:tspan[2]
 
     #get the number of batches & output neurons
     output_shape = x.shape
@@ -177,13 +178,21 @@ function remap_phase(x::AbstractArray)
     return x
 end
 
-function similarity(x::AbstractArray, y::AbstractArray; dim::Int = 1)
+function similarity(x::AbstractArray, y::AbstractArray; dim::Int = -1)
+    if dim == -1
+        dim = ndims(x)
+    end
+
     dx = cos.(pi .* (x .- y))
     s = mean(dx, dims = dim)
     return s
 end
 
-function interference_similarity(interference::AbstractArray, dim::Int=1)
+function interference_similarity(interference::AbstractArray; dim::Int=-1)
+    if dim == -1
+        dim = ndims(interference)
+    end
+
     magnitude = clamp.(interference, 0.0, 2.0)
     half_angle = acos.(0.5 .* magnitude)
     sim = cos.(2.0 .* half_angle)
@@ -192,30 +201,33 @@ function interference_similarity(interference::AbstractArray, dim::Int=1)
     return avg_sim
 end
 
-function similarity(x::SpikeTrain, y::SpikeTrain; dim::Int = 1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
+function similarity(x::SpikeTrain, y::SpikeTrain; dim::Int = -1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
     sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
     sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
+    if dim == -1
+        dim = length(x.shape)
+    end
 
     u_x = normalize_potential.(Array(sol_x))
     u_y = normalize_potential.(Array(sol_y))
 
     interference = abs.(u_x .+ u_y)
-    avg_sim = interference_similarity(interference, dim)
+    sim = interference_similarity(interference)
+    avg_sim = mean(sim, dim=dim)
     
     return avg_sim
-
 end
 
 function similarity_self(x::AbstractArray; dims)
     return similarity_outer(x, x, dims=dims)
 end
 
-function similarity_outer(x::AbstractArray, y::AbstractArray; dims)
-    s = stack([similarity(xs, ys) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)])
+function similarity_outer(x::AbstractArray, y::AbstractArray; dims, reduce_dim::Int=-1)
+    s = stack([similarity(xs, ys, dim=reduce_dim) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)])
     return s
 end
 
-function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
+function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, reduce_dim::Int=-1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
     sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
     sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
 
@@ -224,7 +236,8 @@ function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, tspan::Tuple{<:Rea
 
     #add up along the slices
     interference = [abs.(u_xs .+ u_ys) for u_xs in eachslice(u_x, dims=dims), u_ys in eachslice(u_y, dims=dims)]
-    avg_sim = stack(interference_similarity.(interference, 1))
+    return interference
+    avg_sim = stack(interference_similarity.(interference, dim=reduce_dim))
     return avg_sim
 end
 
@@ -234,5 +247,5 @@ function unbind(x::AbstractArray, y::AbstractArray)
 end
 
 function unbind(x::SpikeTrain, y::SpikeTrain; kwargs...)
-    u_output = bind(x, y, unbind=true; kwargs...)
+    return bind(x, y, unbind=true; kwargs...)
 end

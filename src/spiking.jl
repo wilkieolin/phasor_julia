@@ -71,6 +71,39 @@ function count_nans(phases::Array{<:Real,3})
     return mapslices(x->sum(isnan.(x)), phases, dims=(2,3)) |> vec
 end
 
+function delay_train(train::SpikeTrain, t::Real)
+    times = train.times .+ t
+    new_train = SpikeTrain(train.indices, times, train.shape, train.offset + t)
+    return new_train
+end
+
+
+function vcat_trains(trains::Array{<:SpikeTrain,1})
+    n_t = length(trains)
+    shape = trains[1].shape
+    offset = trains[1].offset
+    for t in trains
+        @assert shape == t.shape "Spike trains must have identical shape to be stacked"
+        @assert offset == t.offset "Spike trains must have identical offsets"
+    end
+
+    new_shape = (n_t, shape[2:end]...)
+    all_indices = []
+
+    for (i, train) in enumerate(trains)
+        old_indices = train.indices
+        #add the new dimension for each index
+        new_indices = [CartesianIndex((i, Tuple(idx)...)[2:end]) for idx in old_indices]
+        append!(all_indices, new_indices)
+    end
+
+    all_indices = vcat(all_indices...)
+    all_times = reduce(vcat, collect(t.times for t in trains))
+
+    new_train = SpikeTrain(all_indices, all_times, new_shape, offset)
+    return new_train
+end
+
 function cycle_correlation(static_phases::Matrix{<:Real}, dynamic_phases::Array{<:Real,3})
     n_cycles = axes(dynamic_phases, 1)
     cor_vals = [cor_realvals(static_phases |> vec, dynamic_phases[i,:,:] |> vec) for i in n_cycles]
