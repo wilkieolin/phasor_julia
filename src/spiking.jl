@@ -173,13 +173,29 @@ end
 function stack_trains(trains::Array{<:SpikeTrain,1})
     n_t = length(trains)
     shape = trains[1].shape
+    offset = trains[1].offset
     for t in trains
         @assert shape == t.shape "Spike trains must have identical shape to be stacked"
+        @assert offset == t.offset "Spike trains must have identical offsets"
     end
 
     new_shape = (n_t, shape...)
-    for i in 1:n_t
-        
+    all_indices = []
+
+    for (i, train) in enumerate(trains)
+        old_indices = train.indices
+        #add the new dimension for each index
+        new_indices = [CartesianIndex((i, Tuple(idx)...)) for idx in old_indices]
+        append!(all_indices, new_indices)
+    end
+
+    all_indices = vcat(all_indices...)
+    all_times = reduce(vcat, collect(t.times for t in trains))
+
+    new_train = SpikeTrain(all_indices, all_times, new_shape, offset)
+    return new_train
+end
+
 
 function period_to_angfreq(t_period::Real)
     angular_frequency = 2 * pi / t_period
