@@ -201,20 +201,19 @@ function interference_similarity(interference::AbstractArray; dim::Int=-1)
     return avg_sim
 end
 
-function similarity(x::SpikeTrain, y::SpikeTrain; dim::Int = -1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false)
+function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, reduce_dim::Int=-1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
     sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
     sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
-    if dim == -1
-        dim = length(x.shape)
+    if reduce_dim == -1
+        reduce_dim = ndims(sol_x)
     end
 
     u_x = normalize_potential.(Array(sol_x))
     u_y = normalize_potential.(Array(sol_y))
-
-    interference = abs.(u_x .+ u_y)
-    sim = interference_similarity(interference)
-    avg_sim = mean(sim, dim=dim)
     
+    #add up along the slices
+    interference = [abs.(u_xs .+ u_ys) for u_xs in eachslice(u_x, dims=dims), u_ys in eachslice(u_y, dims=dims)]
+    avg_sim = interference_similarity.(interference, dim=reduce_dim-1)
     return avg_sim
 end
 
@@ -225,20 +224,6 @@ end
 function similarity_outer(x::AbstractArray, y::AbstractArray; dims, reduce_dim::Int=-1)
     s = stack([similarity(xs, ys, dim=reduce_dim) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)])
     return s
-end
-
-function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, reduce_dim::Int=-1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
-    sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
-    sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
-
-    u_x = normalize_potential.(Array(sol_x))
-    u_y = normalize_potential.(Array(sol_y))
-
-    #add up along the slices
-    interference = [abs.(u_xs .+ u_ys) for u_xs in eachslice(u_x, dims=dims), u_ys in eachslice(u_y, dims=dims)]
-    return interference
-    avg_sim = stack(interference_similarity.(interference, dim=reduce_dim))
-    return avg_sim
 end
 
 function unbind(x::AbstractArray, y::AbstractArray)
