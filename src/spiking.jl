@@ -170,6 +170,17 @@ function spiking_offset(spk_args::SpikingArgs)
     return spk_args.t_period / 4.0
 end
 
+function stack_trains(trains::Array{<:SpikeTrain,1})
+    n_t = length(trains)
+    shape = trains[1].shape
+    for t in trains
+        @assert shape == t.shape "Spike trains must have identical shape to be stacked"
+    end
+
+    new_shape = (n_t, shape...)
+    for i in 1:n_t
+        
+
 function period_to_angfreq(t_period::Real)
     angular_frequency = 2 * pi / t_period
     return angular_frequency

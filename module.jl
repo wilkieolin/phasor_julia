@@ -34,10 +34,15 @@ random_symbols,
 similarity,
 similarity_self,
 similarity_outer,
-similarity_loss
+similarity_loss,
 
-include("src/vsa.jl")
-include("src/spiking.jl")
+#metrics
+confusion_matrix,
+OvR_matrices,
+tpr_fpr,
+interpolate_roc
+
 include("src/network.jl")
+include("src/metrics.jl")
 
 end;

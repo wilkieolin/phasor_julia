@@ -19,8 +19,8 @@ function bind(x::AbstractArray, y::AbstractArray)
     return y
 end
 
-function bind(x::SpikingCall, y::SpikingCall)
-    train = bind(x.train, y.train; tspan=x.t_span, spk_args=x.spk_args)
+function bind(x::SpikingCall, y::SpikingCall; kwargs...)
+    train = bind(x.train, y.train; tspan=x.t_span, spk_args=x.spk_args; kwargs...)
     next_call = SpikingCall(train, x.spk_args, x.t_span)
     return next_call
 end

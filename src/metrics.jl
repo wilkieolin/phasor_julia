@@ -1,8 +1,7 @@
 using Interpolations: linear_interpolation
+using LinearAlgebra: diag
 
-function confusion_matrix(prediction, truth, threshold::Real)
-    #how close are the predictions to positive?
-    sim = similarity(prediction, zero(prediction) .+ 0.5, dim=2)
+function confusion_matrix(sim, truth, threshold::Real)
     truth = hcat(truth .== 1, truth .== 0)
     prediction = hcat(sim .> threshold, sim .<= threshold)
 
@@ -16,9 +15,9 @@ function OvR_matrices(predictions, labels, threshold::Real)
     return mats
 end
 
-function tpr_fpr(prediction, truth, threshold::Real = 0.2, points::Int = 201, epsilon::Real = 0.01)
-    labels = momentum_to_label(truth, threshold)
-    test_points = range(start = 1.0, stop = -1.0, length = points)
+function tpr_fpr(prediction, labels, points::Int = 201, epsilon::Real = 0.01)
+    test_points = range(start = 0.0, stop = -20.0, length = points)
+    test_points = vcat(exp.(test_points), 0.0, reverse(-1 .* exp.(test_points)))
 
     fn = x -> sum(OvR_matrices(prediction, labels, x))
     confusion = cat(fn.(test_points)..., dims=3)
@@ -42,8 +41,6 @@ end
     
 function interpolate_roc(roc)
     tpr, fpr = roc
-    tpr = cat(0.0, tpr, 1.0, dims=1)
-    fpr = cat(0.0, fpr, 1.0, dims=1)
     interp = linear_interpolation(fpr, tpr)
     return interp
 end

@@ -3,7 +3,6 @@ using Random: AbstractRNG
 using Lux: glorot_uniform, truncated_normal
 
 include("vsa.jl")
-include("spiking.jl")
 
 LuxParams = Union{NamedTuple, ComponentArray}
 
