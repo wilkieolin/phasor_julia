@@ -25,8 +25,14 @@ function bind(x::SpikingCall, y::SpikingCall; kwargs...)
     return next_call
 end
 
-function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false, unbind::Bool=false)
-    #set up functions to define the neuron's differential equations
+function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), return_solution::Bool = false, unbind::Bool=false, automatch::Bool=true)
+    if !automatch
+        if check_offsets(x::SpikeTrain, y::SpikeTrain) @warn "Offsets between spike trains do not match - may not produce desired phases" end
+    else
+        x, y = match_offsets(x, y)
+    end
+
+    #set up functions to define the neuron'sa differential equations
     k = neuron_constant(spk_args)
     tbase = tspan[1]:spk_args.dt:tspan[2]
 
@@ -201,7 +207,13 @@ function interference_similarity(interference::AbstractArray; dim::Int=-1)
     return avg_sim
 end
 
-function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, reduce_dim::Int=-1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args())
+function similarity_outer(x::SpikeTrain, y::SpikeTrain; dims, reduce_dim::Int=-1, tspan::Tuple{<:Real, <:Real} = (0.0, 10.0), spk_args::SpikingArgs = default_spk_args(), automatch::Bool=true)
+    if !automatch
+        if check_offsets(x::SpikeTrain, y::SpikeTrain) @warn "Offsets between spike trains do not match - may not produce desired phases" end
+    else
+        x, y = match_offsets(x, y)
+    end
+
     sol_x = phase_memory(x, tspan = tspan, spk_args = spk_args)
     sol_y = phase_memory(y, tspan = tspan, spk_args = spk_args)
     if reduce_dim == -1

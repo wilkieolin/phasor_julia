@@ -24,6 +24,7 @@ cor_realvals,
 stack_trains,
 vcat_trains,
 delay_train,
+match_offsets,
 
 #vsa
 bundle,

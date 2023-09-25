@@ -67,18 +67,36 @@ function cor_realvals(x, y)
     return cor_val
 end
 
+function check_offsets(x::SpikeTrain, y::SpikeTrain)
+    if x.offset != y.offset
+        return false
+    else
+        return true
+    end
+end
+
+function check_offsets(x::SpikeTrain...)
+    offset = x[1].offset
+    for st in x
+        if st.offset != offset
+            return false
+        end
+    end
+    return true
+end
+
 function count_nans(phases::Array{<:Real,3})
     return mapslices(x->sum(isnan.(x)), phases, dims=(2,3)) |> vec
 end
 
-function delay_train(train::SpikeTrain, t::Real)
+function delay_train(train::SpikeTrain, t::Real, offset::Real)
     times = train.times .+ t
-    new_train = SpikeTrain(train.indices, times, train.shape, train.offset + t)
+    new_train = SpikeTrain(train.indices, times, train.shape, train.offset + offset)
     return new_train
 end
 
-
 function vcat_trains(trains::Array{<:SpikeTrain,1})
+    check_offsets(trains...)
     n_t = length(trains)
     shape = trains[1].shape
     offset = trains[1].offset
@@ -184,6 +202,37 @@ function find_spikes_rf(u::AbstractArray, t::AbstractVector, spk_args::SpikingAr
     return channels, times
 end
 
+"""
+Delay spike trains as necessary to make the represented phases between them match
+"""
+function match_offsets(x::SpikeTrain, y::SpikeTrain)
+    xo = x.offset
+    yo = y.offset
+
+    if xo == yo
+        return x, y
+    elseif xo > yo
+        dy = xo - yo
+        yp = delay_train(y, dy, dy)
+        return x, yp
+    else
+        dx = yo - xo
+        xp = delay_train(x, dx, dx)
+        return xp, y
+    end
+end
+
+"""
+Delay the spike trains in a vector as necessary to make their offsets match
+"""
+function match_offsets(x::Vector{<:SpikeTrain})
+    offsets = getfield.(x, :offset)
+    final = maximum(offsets)
+    dt = final .- offsets
+    new_trains = [delay_train(st, dt[i], dt[i]) for (i, st) in enumerate(x)]
+    return new_trains
+end
+
 function neuron_constant(spk_args::SpikingArgs)
     angular_frequency = period_to_angfreq(spk_args.t_period)
     k = (spk_args.leakage + 1im * angular_frequency)
@@ -204,6 +253,7 @@ function spiking_offset(spk_args::SpikingArgs)
 end
 
 function stack_trains(trains::Array{<:SpikeTrain,1})
+    check_offsets(trains...)
     n_t = length(trains)
     shape = trains[1].shape
     offset = trains[1].offset
