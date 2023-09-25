@@ -1,4 +1,5 @@
 using Statistics: mean
+using Random: AbstractRNG
 using DifferentialEquations
 
 include("spiking.jl")
@@ -174,6 +175,11 @@ end
 
 function random_symbols(size::Tuple{Vararg{Int}})
     y = 2 .* rand(Float32, size) .- 1.0
+    return y
+end
+
+function random_symbols(size::Tuple{Vararg{Int}}, rng::AbstractRNG)
+    y = 2 .* rand(rng, Float32, size) .- 1.0
     return y
 end
 
