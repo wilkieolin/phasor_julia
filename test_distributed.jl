@@ -2,6 +2,7 @@ using Pkg
 Pkg.activate(".")
 
 using Distributed, ClusterManagers
+using Base: @kwdef
 
 # Arguments to the Slurm srun(1) command can be given as keyword
 # arguments to addprocs.  The argument name and value is translated to
@@ -14,15 +15,32 @@ using Distributed, ClusterManagers
 #    e.g. exclusive="" => "--exclusive"
 # 4) If the argument contains "_", they are replaced with "-",
 #    e.g. mem_per_cpu=100 => "--mem-per-cpu=100"
-addprocs(SlurmManager(2), partition="bdwall", t="00:5:00")
+#addprocs(SlurmManager(2), partition="bdwall", t="00:5:00")
+addprocs(2)
+@everywhere include("module.jl")
 
-hosts = []
-pids = []
+@kwdef struct Args
+	nodes::Int = 20
+	p_edge::Real = 0.1
+	d_vsa::Int = 1024
+end
+
+n_trials = 6
+
+n_nodes = [20]
+p_edge = [0.1]
+d_vsa = [1024]
+
+all_args = [repeat(Args(nodes = n, p_edge = p, d_vsa = d), n_trials) for n in n_nodes, p in p_edge, d in d_vsa]
+
 for i in workers()
 	host, pid = fetch(@spawnat i (gethostname(), getpid()))
 	push!(hosts, host)
 	push!(pids, pid)
 end
+
+print(hosts)
+print(pids)
 
 # The Slurm resource allocation is released when all the workers have
 # exited

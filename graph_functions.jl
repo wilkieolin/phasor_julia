@@ -117,7 +117,7 @@ function query_edges(graph::SpikeTrain, nodes::Vector{<:SpikeTrain}, spk_args::S
     
     function query_edge(node)
         query = unbind(graph, node, tspan=tspan, spk_args=spk_args)
-        s = similarity_outer(query, all_nodes, dims=1, reduce_dim=2, spk_args=sa, tspan=tspan)
+        s = similarity_outer(query, all_nodes, dims=1, reduce_dim=2, spk_args=spk_args, tspan=tspan)
         return s
     end
     
