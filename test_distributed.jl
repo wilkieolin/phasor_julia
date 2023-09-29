@@ -1,7 +1,7 @@
 using Pkg
 Pkg.activate(".")
 
-using Distributed, ClusterManagers, JLD2, Dates
+using Distributed, ClusterManagers
 using Base: @kwdef
 using Random: Xoshiro, AbstractRNG
 
@@ -21,6 +21,8 @@ n_procs = parse(Int, ARGS[1])
 #addprocs(SlurmManager(2), partition="bdwall", t="00:5:00")
 addprocs(n_procs)
 @everywhere include("graph_functions.jl")
+@everywhere using Dates: now
+@everywhere using JLD2: save_object
 
 @everywhere @kwdef struct Args
 	nodes::Int = 20
@@ -30,7 +32,7 @@ addprocs(n_procs)
 end
 
 key = Xoshiro(42)
-n_trials = 6
+n_trials = 12
 n_nodes = [25]
 p_edge = collect(0.1:0.1:0.9)
 d_vsa = [512]
