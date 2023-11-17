@@ -31,7 +31,7 @@ addprocs(n_procs)
 	rng::AbstractRNG
 end
 
-key = Xoshiro(42)
+key = Xoshiro(52)
 n_trials = 12
 n_nodes = [25]
 p_edge = collect(0.1:0.1:0.9)
