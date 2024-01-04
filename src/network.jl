@@ -1,4 +1,4 @@
-using ComponentArrays, SciMLSensitivity, DifferentialEquations
+using ComponentArrays, SciMLSensitivity, DifferentialEquations, Lux
 using Random: AbstractRNG
 using Lux: glorot_uniform, truncated_normal
 
