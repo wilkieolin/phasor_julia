@@ -239,6 +239,10 @@ function similarity_self(x::AbstractArray; dims)
     return similarity_outer(x, x, dims=dims)
 end
 
+"""
+Slicing each array along 'dims', find the similarity between each corresponding slice and
+reduce along 'reduce_dim'
+"""
 function similarity_outer(x::AbstractArray, y::AbstractArray; dims, reduce_dim::Int=-1)
     s = stack([similarity(xs, ys, dim=reduce_dim) for xs in eachslice(x, dims=dims), ys in eachslice(y, dims=dims)])
     return s
