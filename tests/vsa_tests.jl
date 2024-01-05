@@ -1,11 +1,34 @@
 using Statistics: mean
 using LinearAlgebra: diag
+using .PhasorNetworks: bind
+
+n_x = 101
+n_y = 101
+n_vsa = 1
+repeats = 6
+epsilon = 0.02
+spk_args = default_spk_args()
+tspan = (0.0, repeats*1.0)
+tbase = collect(tspan[1]:spk_args.dt:tspan[2])
 
 function vsa_tests()
     #test functions
-    t1 = test_orthogonal()
-    t2 = test_outer()
+    tests = [test_orthogonal(),
+            test_outer(),
+            test_binding(),
+            ]
+
+    all_pass = reduce(*, tests)
+    if all_pass
+        println("All VSA tests passed.")
+    else
+        println("VSA test failed.")
+    end
+
+    return all_pass
 end
+
+in_tolerance = x -> x < epsilon ? true : false
 
 """
 Basic test that random VSA symbols are orthogonal
@@ -24,14 +47,6 @@ end
 Test the outer similarity function with normal and spiking arguments
 """
 function test_outer()
-    n_x = 101
-    n_y = 101
-    n_vsa = 1
-    repeats = 6
-    epsilon = 0.02
-    spk_args = default_spk_args()
-    tspan = (0.0, repeats*1.0)
-
     function check_phase(matrix)
         in_phase = diag(matrix)
         anti_phase = diag(matrix, convert(Int, round(n_x / 2)))
@@ -64,5 +79,48 @@ function test_outer()
     error_check = avg_error < epsilon
     @assert error_check "Poor match between similarity implementations"
 
-    return v1, v2, v1s, v2s, error_check
+    pass = reduce(*, [v1, v2, v1s, v2s, error_check])
+    return pass
+end
+
+function test_binding()
+    #produce all possible pairs of angles
+    phases = collect([[x, y] for x in range(-1.0, 1.0, n_x), y in range(-1.0, 1.0, n_y)]) |> stack
+    phases = reshape(phases, (1,2,:))
+    #check binding and unbinding functions
+    b = bind(phases, dims=2)
+    ub = unbind(phases[1:1,1:1,:], phases[1:1,2:2,:])
+
+    #check binding via oscillators
+    st_x = phase_to_train(phases[1:1,1:1,:], spk_args, repeats = repeats)
+    st_y = phase_to_train(phases[1:1,2:2,:], spk_args, repeats = repeats)
+    uout = bind(st_x, st_y, tspan=tspan, return_solution=true);
+    decoded = potential_to_phase(uout, tbase, dim=4, spk_args=spk_args);
+    u_err = mean(decoded[1,:,:,:] .- b[1,:,:], dims=(1,2))[end]
+    u_check = in_tolerance(u_err)
+    @assert u_check "Incorrect potential resulting from binding"
+
+    #check with spiking outputs
+    b2 = bind(st_x, st_y, tspan=tspan, return_solution=false)
+    b2d = train_to_phase(b2, spk_args)
+    enc_error = filter(x -> !isnan(x), vec(b2d[5,:,:,:]) .- vec(b)) |> mean
+    enc_check = in_tolerance(enc_error)
+    @assert enc_check "Incorrect spiking outputs from binding"
+
+    #check unbinding operation
+    ubout = unbind(st_x, st_y, tspan=tspan, return_solution=true)
+    decoded = potential_to_phase(ubout, tbase, dim=4, spk_args=spk_args)
+    err = mean(decoded[1,:,:,:] .- ub[1,:,:], dims=(1,2))[end]
+    unbind_chk = in_tolerance(err)
+    @assert unbind_chk "Unbinding resulted in incorrect potential"
+
+    #check unbinding with spiking outputs
+    ub2 = unbind(st_x, st_y, tspan=tspan, return_solution=false)
+    ub2d = train_to_phase(ub2, spk_args)
+    ub_enc_error = filter(x -> !isnan(x), vec(ub2d[5,:,:,:]) .- vec(ub)) |> mean
+    ub_enc_check = in_tolerance(ub_enc_error)
+    @assert ub_enc_check "Unbinding resulted in incorrect spiking outputs"
+
+    pass = reduce(*, [u_check, enc_check, unbind_chk, ub_enc_check])
+    return pass
 end
