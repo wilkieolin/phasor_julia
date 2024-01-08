@@ -164,7 +164,7 @@ function bias_current(bias::AbstractArray, t::Real, t_offset::Real, spk_args::Sp
     end
 end
 
-function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; dim::Int)
+function find_spikes_rf(sol::ODESolution, spk_args::SpikingArgs; dim::Int=-1)
     @assert typeof(sol.u) <: Vector{<:Array{<:Complex}} "This method is for R&F neurons with complex potential"    
     t = sol.t
     u = Array(sol)

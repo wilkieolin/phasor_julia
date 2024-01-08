@@ -18,6 +18,7 @@ phase_to_train,
 phase_to_potential,
 potential_to_phase,
 train_to_phase,
+count_nans,
 zero_nans,
 cycle_correlation,
 cor_realvals,
@@ -40,13 +41,21 @@ similarity_self,
 similarity_outer,
 similarity_loss,
 
+#network
+attend,
+variance_scaling,
+
 #metrics
+accuracy_quadrature,
+quadrature_loss,
+similarity_loss,
+loss_and_accuracy,
+spiking_accuracy,
 confusion_matrix,
 OvR_matrices,
 tpr_fpr,
 interpolate_roc
 
-include("src/network.jl")
 include("src/metrics.jl")
 
 end;
