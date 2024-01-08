@@ -1,4 +1,5 @@
 using Interpolations: linear_interpolation
+using Statistics: cor
 using LinearAlgebra: diag
 
 include("network.jl")
@@ -70,6 +71,22 @@ function confusion_matrix(sim, truth, threshold::Real)
 
     confusion = truth' * prediction
     return confusion
+end
+
+function cycle_correlation(static_phases::Matrix{<:Real}, dynamic_phases::Array{<:Real,3})
+    n_cycles = axes(dynamic_phases, 1)
+    cor_vals = [cor_realvals(static_phases |> vec, dynamic_phases[i,:,:] |> vec) for i in n_cycles]
+    return cor_vals
+end
+
+function cor_realvals(x, y)
+    is_real = x -> .!isnan.(x)
+    x_real = is_real(x)
+    y_real = is_real(y)
+    reals = x_real .* y_real
+    
+    cor_val = cor(x[reals], y[reals])
+    return cor_val
 end
 
 function OvR_matrices(predictions, labels, threshold::Real)

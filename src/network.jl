@@ -189,46 +189,6 @@ end
 Other utilities
 """
 
-
-function quadrature_loss(phases::AbstractArray, truth::AbstractArray)
-    targets = 0.5 .* truth
-    sim = similarity(phases, targets, dim = 1)
-    return 1.0 .- sim
-end
-
-function similarity_loss(phases::AbstractArray, truth::AbstractArray, dim::Int)
-    sim = similarity(phases, truth, dim = dim)
-    return 1.0 .- sim
-end
-
-function accuracy(data_loader, model, spk_args::SpikingArgs, t_span::Tuple{<:Real, <:Real})
-    acc = []
-    n_phases = []
-    num = 0
-
-    for (x, y) in data_loader
-        train = phase_to_train(x, spk_args, repeats=3)
-        call = SpikingCall(train, spk_args, t_span)
-        spk_output = model(call)
-        ŷ = train_to_phase(spk_output)
-        
-        append!(acc, sum.(accuracy_quadrature(ŷ, y))') ## Decode the output of the model
-        num +=  size(x)[end]
-    end
-
-    return acc, num
-end
-
-function accuracy_quadrature(phases::AbstractMatrix, truth::AbstractMatrix)
-    predictions = getindex.(argmin(abs.(phases .- 0.5), dims=1), 1)'
-    labels = getindex.(findall(truth), 1)
-    return predictions .== labels
-end
-
-function accuracy_quadrature(phases::Array{<:Real,3}, truth::AbstractMatrix)
-    return [accuracy_quadrature(phases[i,:,:], truth) for i in axes(phases,1)]
-end
-
 function variance_scaling(shape::Integer...; mode::String = "fan_in", scale::Real = 1.0)
     fan_in = shape[1]
     fan_out = shape[end]
