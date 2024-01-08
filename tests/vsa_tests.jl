@@ -2,6 +2,7 @@ using Statistics: mean
 using LinearAlgebra: diag
 using .PhasorNetworks: bind
 
+#global args for all tests
 n_x = 101
 n_y = 101
 n_vsa = 1
@@ -11,11 +12,15 @@ spk_args = default_spk_args()
 tspan = (0.0, repeats*1.0)
 tbase = collect(tspan[1]:spk_args.dt:tspan[2])
 
+"""
+Run all the basic VSA tests and check they pass
+"""
 function vsa_tests()
     #test functions
     tests = [test_orthogonal(),
             test_outer(),
             test_binding(),
+            test_bundling(),
             ]
 
     all_pass = reduce(*, tests)
@@ -28,7 +33,36 @@ function vsa_tests()
     return all_pass
 end
 
-in_tolerance = x -> x < epsilon ? true : false
+"""
+Check if a value is within the bounds determined by epsilon
+"""
+function in_tolerance(x)
+    return abs(x) < epsilon ? true : false
+end
+
+"""
+Produce all possible pairs of angles
+"""
+function make_angle_pairs()
+    phases = collect([[x, y] for x in range(-1.0, 1.0, n_x), y in range(-1.0, 1.0, n_y)]) |> stack
+    phases = reshape(phases, (1,2,:))
+    return phases
+end
+
+"""
+Remove NaN values
+"""
+function remove_nan(x)
+    y = filter(x -> !isnan(x), x)
+    return y
+end
+
+"""
+Produce the error of angular values from zero
+"""
+function sin_error(x)
+    return sin.(pi .* x) |> mean
+end
 
 """
 Basic test that random VSA symbols are orthogonal
@@ -83,10 +117,12 @@ function test_outer()
     return pass
 end
 
+
+"""
+Test the binding/unbinding functions in both versions & cross-check errors
+"""
 function test_binding()
-    #produce all possible pairs of angles
-    phases = collect([[x, y] for x in range(-1.0, 1.0, n_x), y in range(-1.0, 1.0, n_y)]) |> stack
-    phases = reshape(phases, (1,2,:))
+    phases = make_angle_pairs()
     #check binding and unbinding functions
     b = bind(phases, dims=2)
     ub = unbind(phases[1:1,1:1,:], phases[1:1,2:2,:])
@@ -103,7 +139,7 @@ function test_binding()
     #check with spiking outputs
     b2 = bind(st_x, st_y, tspan=tspan, return_solution=false)
     b2d = train_to_phase(b2, spk_args)
-    enc_error = filter(x -> !isnan(x), vec(b2d[5,:,:,:]) .- vec(b)) |> mean
+    enc_error = remove_nan(vec(b2d[5,:,:,:]) .- vec(b)) |> mean
     enc_check = in_tolerance(enc_error)
     @assert enc_check "Incorrect spiking outputs from binding"
 
@@ -117,10 +153,35 @@ function test_binding()
     #check unbinding with spiking outputs
     ub2 = unbind(st_x, st_y, tspan=tspan, return_solution=false)
     ub2d = train_to_phase(ub2, spk_args)
-    ub_enc_error = filter(x -> !isnan(x), vec(ub2d[5,:,:,:]) .- vec(ub)) |> mean
+    ub_enc_error = remove_nan(vec(ub2d[5,:,:,:]) .- vec(ub)) |> mean
     ub_enc_check = in_tolerance(ub_enc_error)
     @assert ub_enc_check "Unbinding resulted in incorrect spiking outputs"
 
     pass = reduce(*, [u_check, enc_check, unbind_chk, ub_enc_check])
     return pass
+end
+
+function test_bundling()
+    phases = make_angle_pairs()
+    #check bundling function
+    b = bundle(phases, dims=2);
+
+    st = phase_to_train(phases, spk_args, repeats=6)
+    #check potential encodings
+    b2_sol = bundle(st, dims=2, spk_args=spk_args, tspan=tspan, return_solution=true)
+    b2_phase = potential_to_phase(b2_sol, tbase, dim=4, spk_args=spk_args, offset=0.0)
+    b2_phase_error = vec(b2_phase[1,1,:,end]) .- vec(b) |> mean
+    b2_phase_check = in_tolerance(b2_phase_error)
+    @assert b2_phase_check "Bundling phase error out of tolerance"
+
+    #check spiking encoding
+    b2 = bundle(st, dims=2, spk_args=spk_args, tspan=tspan, return_solution=false)
+    decoded = train_to_phase(b2, spk_args)
+    b2_error = remove_nan(vec(decoded[end-1,:,:,:]) .- vec(b)) |> sin_error
+    b2_spike_check = in_tolerance(b2_error)
+    @assert b2_spike_check "Bundling spiking error out of tolerance"
+
+    pass = b2_phase_check * b2_spike_check
+    return pass
+    
 end
