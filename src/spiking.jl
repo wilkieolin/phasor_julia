@@ -1,5 +1,4 @@
 using DifferentialEquations: ODESolution
-using Statistics: cor
 
 struct SpikeTrain
     indices::Array{<:Union{Int, CartesianIndex},1}
@@ -57,16 +56,6 @@ struct CurrentCall
     t_span::Tuple{<:Real, <:Real}
 end
 
-function cor_realvals(x, y)
-    is_real = x -> .!isnan.(x)
-    x_real = is_real(x)
-    y_real = is_real(y)
-    reals = x_real .* y_real
-    
-    cor_val = cor(x[reals], y[reals])
-    return cor_val
-end
-
 function check_offsets(x::SpikeTrain, y::SpikeTrain)
     if x.offset != y.offset
         return false
@@ -120,12 +109,6 @@ function vcat_trains(trains::Array{<:SpikeTrain,1})
 
     new_train = SpikeTrain(all_indices, all_times, new_shape, offset)
     return new_train
-end
-
-function cycle_correlation(static_phases::Matrix{<:Real}, dynamic_phases::Array{<:Real,3})
-    n_cycles = axes(dynamic_phases, 1)
-    cor_vals = [cor_realvals(static_phases |> vec, dynamic_phases[i,:,:] |> vec) for i in n_cycles]
-    return cor_vals
 end
 
 function spike_current(train::SpikeTrain, t::Real, spk_args::SpikingArgs)
