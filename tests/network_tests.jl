@@ -5,26 +5,32 @@ using Lux, MLUtils, MLDatasets, OneHotArrays, Plots, Statistics
 using Random: Xoshiro
 using Base: @kwdef
 
-include("module.jl")
+include("../module.jl")
 using .PhasorNetworks
 
 epsilon = 0.10
+repeats = 6
+epsilon = 0.02
+spk_args = default_spk_args()
+tspan = (0.0, repeats*1.0)
+
+@kwdef mutable struct Args
+    η::Float64 = 3e-4       ## learning rate
+    batchsize::Int = 256    ## batch size
+    epochs::Int = 10        ## number of epochs
+    use_cuda::Bool = false   ## use gpu (if cuda available)
+    rng::Xoshiro = Xoshiro(42) ## global rng
+end
 
 function network_tests()
-    @kwdef mutable struct Args
-        η::Float64 = 3e-4       ## learning rate
-        batchsize::Int = 256    ## batch size
-        epochs::Int = 10        ## number of epochs
-        use_cuda::Bool = false   ## use gpu (if cuda available)
-        rng::Xoshiro = Xoshiro(42) ## global rng
-    end
-
     #load the dataset and a single batch for testing
     args = Args()
     train_loader, test_loader = getdata(args)
     x, y = first(train_loader)
 
     model, ps, st = build_mlp(args)
+    c_naive = test_correlation(model, ps, st, x)
+    print(c_naive)
 
 
 
@@ -37,8 +43,6 @@ end
 
 function getdata(args)
     ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
-
-    @info "Getting and transforming data"
 
     ## Load dataset
     xtrain, ytrain = MLDatasets.FashionMNIST(:train)[:]
@@ -64,3 +68,18 @@ function build_mlp(args)
     return phasor_model, ps, st
 end
 
+function test_correlation(model, ps, st, x)
+    #make the regular (static) call
+    y, _ = model(x, ps, st)
+    #make the spiking (dynamic) call
+    x_train = phase_to_train(x, spk_args, repeats = repeats)
+    x_call = SpikingCall(x_train, spk_args, tspan)
+    y_spk, _ = model(x_call, ps, st)
+    yp = train_to_phase(y_spk)
+    #measure the correlation between results
+    c = cycle_correlation(y, yp)
+    return c
+end
+
+
+network_tests()
