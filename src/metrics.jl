@@ -55,7 +55,7 @@ function spiking_accuracy(data_loader, model, ps, st;
         num +=  size(x)[end]
     end
 
-    acc = sum(reshape(acc, 10, :), dims=2) ./ num
+    acc = sum(reshape(acc, repeats, :), dims=2) ./ num
     return acc
 end
 

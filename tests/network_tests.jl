@@ -13,7 +13,7 @@ tspan = (0.0, repeats*1.0)
 @kwdef mutable struct Args
     η::Float64 = 3e-4       ## learning rate
     batchsize::Int = 256    ## batch size
-    epochs::Int = 3        ## number of epochs
+    epochs::Int = 4        ## number of epochs
     use_cuda::Bool = false   ## use gpu (if cuda available)
     rng::Xoshiro = Xoshiro(42) ## global rng
 end
@@ -27,14 +27,18 @@ function network_tests()
     model, ps, st = build_mlp(args)
     pretrain_chk = correlation_test(model, ps, st, x)
     train_chk, ps_train, st_train = train_test(model, args, ps, st, train_loader, test_loader)
-    acc_test = accuracy_test(model, ps_train, st_train, test_loader)
+    acc_chk = accuracy_test(model, ps_train, st_train, test_loader)
     posttrain_chk = correlation_test(model, ps_train, st_train, x)
-    spk_acc_test = spiking_accuracy_test(model, ps_train, st_train, (x, y))
+    spk_acc_chk = spiking_accuracy_test(model, ps_train, st_train, [(x, y),])
 
+    all_pass = reduce(*, [pretrain_chk, train_chk, acc_chk, posttrain_chk, spk_acc_chk])
+    if all_pass
+        println("All network tests passed.")
+    else
+        println("Network tests failed.")
+    end
 
-
-
-
+    return all_pass
 end
 
 """
@@ -137,15 +141,17 @@ end
 function accuracy_test(model, ps, st, test_loader)
     _, accuracy = loss_and_accuracy(test_loader, model, ps, st)
     #usually reaches ~83% after 6 epochs
-    acc_error = 0.827 - accuracy
-    acc_check = in_tolerance(acc_error)
+    acc_check = accuracy > 0.80
+    @assert acc_check "Trained network accuracy too low"
     return acc_check
 end
 
 function spiking_accuracy_test(model, ps, st, test_batch)
     @info "Running spiking accuracy test..."
-    acc = spiking_accuracy(test_batch, model, ps, st, spk_args, tspan, repeats)
-    print(acc)
+    acc = spiking_accuracy(test_batch, model, ps, st,
+                            spk_args = spk_args, 
+                            t_span = tspan, 
+                            repeats = repeats)
     #make sure accuracy is above the baseline (~80%)
     acc_check = acc[end-1] > 0.80
     @assert acc_check "Accuracy of spiking result too low"
