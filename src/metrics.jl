@@ -37,7 +37,10 @@ function loss_and_accuracy(data_loader, model, ps, st;
     return ls/num, acc/num
 end
 
-function spiking_accuracy(data_loader, model, ps, st, spk_args::SpikingArgs, t_span::Tuple{<:Real, <:Real}; repeats::Int = 3)
+function spiking_accuracy(data_loader, model, ps, st;
+                         spk_args::SpikingArgs = default_spk_args(),
+                         t_span::Tuple{<:Real, <:Real} = (0.0, 6.0),
+                         repeats::Int = 6)
     acc = []
     n_phases = []
     num = 0
@@ -52,7 +55,8 @@ function spiking_accuracy(data_loader, model, ps, st, spk_args::SpikingArgs, t_s
         num +=  size(x)[end]
     end
 
-    return acc, num
+    acc = sum(reshape(acc, 10, :), dims=2) ./ num
+    return acc
 end
 
 function accuracy_quadrature(phases::AbstractMatrix, truth::AbstractMatrix)

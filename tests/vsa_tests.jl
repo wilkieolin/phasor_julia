@@ -68,6 +68,7 @@ end
 Basic test that random VSA symbols are orthogonal
 """
 function test_orthogonal()
+    @info "Running orthogonality test..."
     x = random_symbols((100, 1024))
     y = random_symbols((100, 1024))
 
@@ -81,6 +82,7 @@ end
 Test the outer similarity function with normal and spiking arguments
 """
 function test_outer()
+    @info "Running similarity test..."
     function check_phase(matrix)
         in_phase = diag(matrix)
         anti_phase = diag(matrix, convert(Int, round(n_x / 2)))
@@ -122,6 +124,7 @@ end
 Test the binding/unbinding functions in both versions & cross-check errors
 """
 function test_binding()
+    @info "Running binding test..."
     phases = make_angle_pairs()
     #check binding and unbinding functions
     b = bind(phases, dims=2)
@@ -162,6 +165,7 @@ function test_binding()
 end
 
 function test_bundling()
+    @info "Running bundling test..."
     phases = make_angle_pairs()
     #check bundling function
     b = bundle(phases, dims=2);
