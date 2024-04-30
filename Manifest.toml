@@ -2,7 +2,7 @@
 
 julia_version = "1.9.0"
 manifest_format = "2.0"
-project_hash = "4d6d4245ad00e3a4f631cc465319192e70558179"
+project_hash = "41f9605e0b3dedfb318ac825e83621dd26ba5fa4"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "5d2e21d7b0d8c22f67483ef95ebdc39c0e6b6003"
@@ -1684,6 +1684,11 @@ deps = ["Base64", "Test", "Unitful"]
 git-tree-sha1 = "9a9731f346797126271405971dfdf4709947718b"
 uuid = "7b2266bf-644c-5ea3-82d8-af4bbd25a884"
 version = "1.1.4"
+
+[[deps.PhasorNetworks]]
+path = "/Users/wilkie/.julia/dev/PhasorNetworks"
+uuid = "d65c09a2-b01b-4273-89de-1d4433de8c96"
+version = "1.0.0-DEV"
 
 [[deps.Pickle]]
 deps = ["BFloat16s", "DataStructures", "InternedStrings", "Serialization", "SparseArrays", "Strided", "StringEncodings", "ZipFile"]

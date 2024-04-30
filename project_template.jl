@@ -5,10 +5,12 @@ using PkgTemplates
 
 t = Template(;
     user="wilkieolin",
-    dir=".",
     authors="Wilkie Olin-Ammentorp",
     julia=v"1.9",
     plugins=[
+        ProjectFile(version=v"1.0.0-DEV"),
+        SrcDir(file="PhasorNetworks.jl"),
+        Tests(file="run_tests.jl"),
         License(; name="MIT"),
         Git(; manifest=true, ssh=true),
         GitHubActions(; x64=true),
@@ -18,4 +20,4 @@ t = Template(;
     ],
 )
 
-print(t)
+t("PhasorNetworks.jl")

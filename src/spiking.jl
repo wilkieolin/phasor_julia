@@ -119,7 +119,7 @@ function spike_current(train::SpikeTrain, t::Real, spk_args::SpikingArgs)
     #determine which synapses will have incoming currents
     #snap spike times to the grid points
     times = train.times .- mod.(train.times, dt)
-    active = (times .> (t - 2 * t_window)) .* (times .< (t))
+    active = (times .> (t - 2 * t_window)) .* (times .< (t + 1 * t_window))
     # relative_time = abs.(times .- t)
     # active = relative_time .<= t_window
     active_inds = train.indices[active]

@@ -44,31 +44,22 @@ function bind(x::SpikeTrain, y::SpikeTrain; tspan::Tuple{<:Real, <:Real} = (0.0,
     sol_x = phase_memory(x, tspan=tspan, spk_args=spk_args)
     sol_y = phase_memory(y, tspan=tspan, spk_args=spk_args)
 
-    to_array = x -> normalize_potential.(Array(x))
-    u_x = to_array(sol_x)
-    u_y = to_array(sol_y)
-
-    n_t = length(sol_x.t)
-    ref_shape = (ones(Int, length(output_shape))..., n_t)
     #create a reference oscillator to generate complex values for each moment in time
-    u_ref = phase_to_potential(0.0, sol_x.t, x.offset, spk_args)
-    u_ref = reshape(u_ref, ref_shape)
+    u_ref = t -> phase_to_potential(0.0, t, x.offset, spk_args)
 
-    #return u_x, u_y, u_ref
-    
     #find the first chord
-    chord_x = u_x
+    chord_x = t -> sol_x(t)
     #find the second chord
     if unbind
-        chord_y = u_x .* conj.((u_y .- u_ref)) .* u_ref
+        chord_y = t -> sol_x(t) .* conj.((sol_y(t) .- u_ref(t))) .* u_ref(t)
     else
-        chord_y = u_x .* (u_y .- u_ref) .* conj(u_ref)
+        chord_y = t -> sol_x(t) .* (sol_y(t) .- u_ref(t)) .* conj(u_ref(t))
     end
 
-    u_output = chord_x .+ chord_y
+    sol_output = t -> chord_x(t) .+ chord_y(t)
     
     if return_solution
-        return u_output
+        return sol_output
     end
     
     indices, times = find_spikes_rf(u_output, tbase, spk_args, dim=ndims(u_output))

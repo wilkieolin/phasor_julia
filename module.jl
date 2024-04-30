@@ -1,6 +1,7 @@
 module PhasorNetworks
 
-using Lux, DifferentialEquations, Statistics
+using Pkg
+Pkg.activate(".")
 
 export 
 #types
