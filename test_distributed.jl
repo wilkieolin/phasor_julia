@@ -1,6 +1,7 @@
 using Pkg
 Pkg.activate(".")
 
+using DifferentialEquations: Tsit5, Heun
 using Distributed, ClusterManagers
 using Base: @kwdef
 using Random: Xoshiro, AbstractRNG
@@ -29,6 +30,7 @@ addprocs(n_procs)
 	p_edge::Real = 0.1
 	d_vsa::Int = 1024
 	rng::AbstractRNG
+	spk_args::SpikingArgs
 end
 
 key = Xoshiro(52)
@@ -36,8 +38,10 @@ n_trials = 12
 n_nodes = [25]
 p_edge = collect(0.1:0.1:0.9)
 d_vsa = [512]
+spk_args = SpikingArgs(solver = Tsit5(),
+						solver_args = Dict(:adaptive => false, :dt => 0.001),)
 
-all_args = stack([[Args(nodes = n, p_edge = p, d_vsa = d, rng = Xoshiro(rand(key, UInt32))) for i in 1:n_trials] for n in n_nodes, p in p_edge, d in d_vsa]) |> vec
+all_args = stack([[Args(nodes = n, p_edge = p, d_vsa = d, rng = Xoshiro(rand(key, UInt32)), spk_args = spk_args) for i in 1:n_trials] for n in n_nodes, p in p_edge, d in d_vsa]) |> vec
 
 @everywhere function save(args, result)
     name = "data/result_" * string(now()) * ".jld2"
@@ -46,7 +50,7 @@ all_args = stack([[Args(nodes = n, p_edge = p, d_vsa = d, rng = Xoshiro(rand(key
 end
 
 @everywhere function call_test(args::Args)
-    aurocs = test_methods(args.nodes, args.p_edge, args.d_vsa, args.rng)
+    aurocs = test_methods(args.nodes, args.p_edge, args.d_vsa, args.rng, args.spk_args)
 	save(args, aurocs)
     return aurocs
 end

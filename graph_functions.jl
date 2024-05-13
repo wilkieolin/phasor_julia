@@ -129,7 +129,7 @@ function query_edges(graph::SpikeTrain, nodes::Vector{<:SpikeTrain}, spk_args::S
     return adj_rec
 end
 
-function test_methods(n::Int, p::Real, d_vsa::Int, rng::AbstractRNG)
+function test_methods(n::Int, p::Real, d_vsa::Int, rng::AbstractRNG, sa::SpikingArgs)
     graph = generate_er_graph(n, p, rng)
     node_symbols = define_node_symbols(graph, d_vsa, rng)
 
@@ -139,7 +139,6 @@ function test_methods(n::Int, p::Real, d_vsa::Int, rng::AbstractRNG)
     auroc_static = auroc(graph, recon_static)
 
     #test with the oscillator-based method
-    sa = SpikingArgs(threshold=0.001, solver_args=Dict(:adaptive => false, :dt => 0.005))
     nodes_dynamic, _, graph_dynamic, tspan = graph_to_vector(graph, node_symbols, sa)
     recon_dynamic = query_edges(graph_dynamic, nodes_dynamic, sa, tspan)
     auroc_dynamic = auroc(graph, recon_dynamic)
