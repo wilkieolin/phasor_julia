@@ -39,7 +39,7 @@ n_nodes = [25]
 p_edge = collect(0.1:0.1:0.9)
 d_vsa = [512]
 spk_args = SpikingArgs(solver = Tsit5(),
-						solver_args = Dict(:adaptive => false, :dt => 0.001),)
+						solver_args = Dict(:adaptive => false, :dt => 0.002),)
 
 all_args = stack([[Args(nodes = n, p_edge = p, d_vsa = d, rng = Xoshiro(rand(key, UInt32)), spk_args = spk_args) for i in 1:n_trials] for n in n_nodes, p in p_edge, d in d_vsa]) |> vec
 
