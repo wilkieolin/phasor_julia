@@ -65,7 +65,7 @@ function graph_to_vector(graph::AbstractMatrix, node_values::AbstractMatrix)
     return edge_values, graph_embedding
 end
 
-function graph_to_vector(graph::AbstractMatrix, node_values::AbstractMatrix, spk_args::SpikingArgs; repeats::Int=5)
+function graph_to_vector(graph::AbstractMatrix, node_values::AbstractMatrix, spk_args::SpikingArgs; repeats::Int=15)
     @assert size(graph,1) == size(graph,2) "Takes an adjacency matrix as the input"
     n = size(graph,1)
     nd = size(node_values, 2)
@@ -129,12 +129,12 @@ function query_edges(graph::SpikeTrain, nodes::Vector{<:SpikeTrain}, spk_args::S
     return adj_rec
 end
 
-function test_methods(n::Int, p::Real, d_vsa::Int, rng::AbstractRNG, sa::SpikingArgs)
+function test_methods(n::Int, p::Real, d_vsa::Int, rng::AbstractRNG, sa::SpikingArgs, repeats::Int = 15)
     graph = generate_er_graph(n, p, rng)
     node_symbols = define_node_symbols(graph, d_vsa, rng)
 
     #test with the floating-point method
-    _, graph_static = graph_to_vector(graph, node_symbols)
+    _, graph_static = graph_to_vector(graph, node_symbols, repeats = repeats)
     recon_static = query_edges(graph_static, node_symbols)
     auroc_static = auroc(graph, recon_static)
 
