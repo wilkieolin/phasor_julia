@@ -134,12 +134,12 @@ function test_methods(n::Int, p::Real, d_vsa::Int, rng::AbstractRNG, sa::Spiking
     node_symbols = define_node_symbols(graph, d_vsa, rng)
 
     #test with the floating-point method
-    _, graph_static = graph_to_vector(graph, node_symbols, repeats = repeats)
+    _, graph_static = graph_to_vector(graph, node_symbols)
     recon_static = query_edges(graph_static, node_symbols)
     auroc_static = auroc(graph, recon_static)
 
     #test with the oscillator-based method
-    nodes_dynamic, _, graph_dynamic, tspan = graph_to_vector(graph, node_symbols, sa)
+    nodes_dynamic, _, graph_dynamic, tspan = graph_to_vector(graph, node_symbols, sa, repeats = repeats)
     recon_dynamic = query_edges(graph_dynamic, nodes_dynamic, sa, tspan)
     auroc_dynamic = auroc(graph, recon_dynamic)
 
