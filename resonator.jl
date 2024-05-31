@@ -7,15 +7,16 @@ function generate_composition(rng::AbstractRNG, codebooks::AbstractArray...)
     return indices, factors, symbol
 end
 
-function generate_composition(indices::AbstractVector, spk_args::SpikingArgs, codebooks::Vector{<:SpikeTrain}...)
-    ns = [size(cb,1) for cb in codebooks]
-    indices = [rand(rng, 1:n) for n in ns]
-    symbols = [codebooks[i][indices[i],:] for i in 1:length(codebooks)]
-    factors = stack(symbols, dims=1)
-    symbol = v_bind(factors, dims=1)
-    return indices, factors, symbol
+function generate_trains(codebook::AbstractArray, spk_args::SpikingArgs, repeats::Int)
+    trains = [phase_to_train(codebook[i,:], spk_args=spk_args, repeats=repeats) for i in 1:size(codebook,1)]
+    return trains
 end
 
+function generate_composition(indices::AbstractVecOrMat, spk_args::SpikingArgs, codebooks::Vector{<:SpikeTrain}...)
+    factors = [codebooks[i][indices[i]] for i in 1:length(codebooks)]
+    symbol = reduce((a, b) -> v_bind(a, b, tspan=tspan, spk_args=spk_args), factors)
+    return factors, symbol
+end
 
 function initialize_guesses(codebooks::AbstractArray...)
     function inner(codebook::AbstractArray)
