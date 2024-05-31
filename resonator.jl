@@ -27,6 +27,15 @@ function initialize_guesses(codebooks::AbstractArray...)
     return guesses
 end
 
+function initialize_guesses(spk_args::SpikingArgs, tspan::Tuple{<:Real, <:Real}, codebooks::SpikeTrain...)
+    function inner(codebook::SpikeTrain)
+        return v_bundle(codebook, dims=1, tspan=tspan, spk_args=spk_args)
+    end
+
+    guesses = collect(map(inner, codebooks))
+    return guesses
+end
+
 function refine(composite::AbstractArray, factor_codebook::AbstractArray, external::AbstractMatrix)
     #bind the symbols for external factors
     external = v_bind(external, dims=1)
