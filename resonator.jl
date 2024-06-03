@@ -46,7 +46,7 @@ function refine(composite::AbstractArray, factor_codebook::AbstractArray, extern
     #calculate the similarity to the codebook
     s = similarity_outer(factor, factor_codebook, dims=1)
     s = abs.(dropdims(s, dims=1))
-    new_guess = v_bundle_project(factor_codebook, s, zeros((size(s,1), size(X_cb,2))))
+    new_guess = v_bundle_project(factor_codebook, s, zeros((size(s,1), size(factor_codebook,2))))
     return new_guess
 end 
 
