@@ -1,9 +1,24 @@
+function select_composition(rng::AbstractRNG, shape::Array)
+    indices = [rand(rng, 1:n) for n in shape]
+    return indices
+end
+
 function generate_composition(rng::AbstractRNG, codebooks::AbstractArray...)
     ns = [size(cb,1) for cb in codebooks]
-    indices = [rand(rng, 1:n) for n in ns]
+    indices = select_composition(rng, ns)
     symbols = [codebooks[i][indices[i],:] for i in 1:length(codebooks)]
     factors = stack(symbols, dims=1)
     symbol = v_bind(factors, dims=1)
+    return indices, factors, symbol
+end
+
+
+function generate_composition(rng::AbstractRNG, spk_args::SpikingArgs, tspan::Tuple{<:Real, <:Real}, codebooks::SpikeTrain...)
+    ns = [size(cb)[1] for cb in codebooks]
+    indices = select_composition(rng, ns)
+    factors = [codebooks[i][indices[i],:] for i in 1:length(codebooks)]
+    symbol = reduce((a, b) -> v_bind(a, b, tspan=tspan, spk_args=spk_args), factors)
+
     return indices, factors, symbol
 end
 
@@ -12,11 +27,6 @@ function generate_trains(codebook::AbstractArray, spk_args::SpikingArgs, repeats
     return trains
 end
 
-function generate_composition(indices::AbstractVecOrMat, spk_args::SpikingArgs, codebooks::Vector{<:SpikeTrain}...)
-    factors = [codebooks[i][indices[i]] for i in 1:length(codebooks)]
-    symbol = reduce((a, b) -> v_bind(a, b, tspan=tspan, spk_args=spk_args), factors)
-    return factors, symbol
-end
 
 function initialize_guesses(codebooks::AbstractArray...)
     function inner(codebook::AbstractArray)
@@ -50,6 +60,22 @@ function refine(composite::AbstractArray, factor_codebook::AbstractArray, extern
     return new_guess
 end 
 
+function refine(composite::SpikeTrain, factor_codebook::SpikeTrain, external::Array{<:SpikeTrain}, spk_args::SpikingArgs, tspan::Tuple{<:Real, <:Real})
+    #bind the symbols for external factors
+    bindfn = (x, y) -> v_bind(x, y, spk_args=spk_args, tspan=tspan)
+    external = reduce(bindfn, external)
+    #return external
+
+    #unbind external factors from the composite symbol
+    factor = v_unbind(composite, external, spk_args=spk_args, tspan=tspan)
+
+    #calculate the similarity to the codebook
+    s = similarity_outer(factor_codebook, factor, dims=1, reduce_dim=2, spk_args=sa, tspan=tspan)
+    w = reshape(abs.([x[end] for x in vec(s)]), (1, :))
+    new_guess = v_bundle_project(factor_codebook, w, zeros((size(w,1), size(factor_codebook)[2])), spk_args=spk_args, tspan=tspan)
+    return new_guess
+end
+
 function resonate(composite::AbstractArray, iterations::Int, codebooks::AbstractArray...)
     n_factors = length(codebooks)
     i_factors = collect(1:n_factors)
@@ -72,6 +98,33 @@ function resonate(composite::AbstractArray, iterations::Int, codebooks::Abstract
     for iter in 1:iterations
         new_guesses = [refine_inner(i, guesses[iter]) for i in 1:n_factors]
         new_guesses = cat(new_guesses..., dims=1)
+        push!(guesses, new_guesses)
+    end
+
+    return guesses
+end
+
+function resonate(composite::SpikeTrain, spk_args::SpikingArgs, tspan::Tuple{<:Real, <:Real}, iterations::Int, codebooks::SpikeTrain...)
+    n_factors = length(codebooks)
+    i_factors = collect(1:n_factors)
+    #create the initial guesses for the symbol components
+    components = initialize_guesses(spk_args, tspan, codebooks...)
+    guesses = [components, ]
+
+    #refine the guess on one factor
+    function refine_inner(ind::Int, components)
+        #what is the factor we are refining
+        factor = components[ind]
+        #what are the other factors
+        external_i = setdiff(i_factors, ind)
+        externals = components[external_i]
+        #refine the factor
+        refined_factor = refine(composite, codebooks[ind], externals, spk_args, tspan)
+        return refined_factor
+    end
+
+    for iter in 1:iterations
+        new_guesses = [refine_inner(i, guesses[iter]) for i in 1:n_factors]
         push!(guesses, new_guesses)
     end
 
@@ -131,4 +184,43 @@ function factor3_test(rng::AbstractRNG, n_iters::Int)
 
     return acc, trends
         
+end
+
+function factor3_test_spiking(rng::AbstractRNG, n_iters::Int, spk_args::SpikingArgs, repeats::Int)
+    #set the simulation timespan
+    tspan = (0.0, spk_args.t_period * repeats)
+    #generate the codebooks and composition given the rng & convert to spikes to drive oscillators
+    p2t = x -> phase_to_train(x, spk_args=spk_args, repeats = repeats)
+    X_cb = random_symbols((n_cb, n_vsa), rng) |> p2t
+    Y_cb = random_symbols((n_cb, n_vsa), rng) |> p2t
+    Z_cb = random_symbols((n_cb, n_vsa), rng) |> p2t
+    
+    fac_i, fac, sym = generate_composition(rng, spk_args, tspan, X_cb, Y_cb, Z_cb)
+    
+    #initialize the guesses
+    x_cb, y_cb, z_cb = initialize_guesses(spk_args, tspan, X_cb, Y_cb, Z_cb)
+    #resonate the factors
+    g = resonate(sym, spk_args, tspan, n_iters, X_cb, Y_cb, Z_cb)
+
+    function final_similarity(train::SpikeTrain, codebook::SpikeTrain)
+        sim = similarity_outer(train, codebook, dims=1, reduce_dim=2, spk_args=sa, tspan=tspan)
+        sim_final = [s[end] for s in sim]
+        return sim_final
+    end
+
+    #measure the result's similarity to the original symbols
+    xmapfn = x -> final_similarity(x[1], X_cb)
+    ymapfn = x -> final_similarity(x[2], Y_cb)
+    zmapfn = x -> final_similarity(x[3], Z_cb)
+    
+    xsims = cat(collect(map(xmapfn, g))..., dims=2)'
+    ysims = cat(collect(map(ymapfn, g))..., dims=2)'
+    zsims = cat(collect(map(zmapfn, g))..., dims=2)'
+
+    #check the correctness of the resonated factors
+    acc = check(fac_i, xsims, ysims, zsims)
+    trends = extract_all_trends(fac_i, xsims, ysims, zsims)
+
+    return acc, trends
+    
 end
