@@ -1,3 +1,6 @@
+using Random: Xoshiro, AbstractRNG
+using PhasorNetworks
+
 function select_composition(rng::AbstractRNG, shape::Array)
     indices = [rand(rng, 1:n) for n in shape]
     return indices
@@ -70,7 +73,7 @@ function refine(composite::SpikeTrain, factor_codebook::SpikeTrain, external::Ar
     factor = v_unbind(composite, external, spk_args=spk_args, tspan=tspan)
 
     #calculate the similarity to the codebook
-    s = similarity_outer(factor_codebook, factor, dims=1, reduce_dim=2, spk_args=sa, tspan=tspan)
+    s = similarity_outer(factor_codebook, factor, dims=1, reduce_dim=2, spk_args=spk_args, tspan=tspan)
     w = reshape(abs.([x[end] for x in vec(s)]), (1, :))
     new_guess = v_bundle_project(factor_codebook, w, zeros((size(w,1), size(factor_codebook)[2])), spk_args=spk_args, tspan=tspan)
     return new_guess
@@ -157,7 +160,7 @@ function check(factors, sims...)
     return correct
 end
 
-function factor3_test(rng::AbstractRNG, n:cb::Int, n_iters::Int)
+function factor3_test(rng::AbstractRNG, n_cb::Int, n_vsa::Int, n_iters::Int)
     #generate the codebooks and composition given the rng
     X_cb = random_symbols((n_cb, n_vsa), rng)
     Y_cb = random_symbols((n_cb, n_vsa), rng)
@@ -186,7 +189,7 @@ function factor3_test(rng::AbstractRNG, n:cb::Int, n_iters::Int)
         
 end
 
-function factor3_test_spiking(rng::AbstractRNG, n_cb::Int, n_iters::Int, spk_args::SpikingArgs, repeats::Int)
+function factor3_test_spiking(rng::AbstractRNG, n_cb::Int, n_vsa::Int, n_iters::Int, spk_args::SpikingArgs, repeats::Int)
     #set the simulation timespan
     tspan = (0.0, spk_args.t_period * repeats)
     #generate the codebooks and composition given the rng & convert to spikes to drive oscillators

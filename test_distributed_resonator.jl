@@ -27,7 +27,7 @@ addprocs(n_procs)
 
 @everywhere @kwdef struct Args
 	n_cb::Int = 20
-	d_vsa::Int = 1024
+	n_vsa::Int = 1024
 	n_iters::Int = 20
 	repeats::Int = 20
 	rng::AbstractRNG
@@ -52,7 +52,7 @@ all_args = [Args(rng = Xoshiro(rand(key, UInt32)), spk_args = spk_args) for _ in
 end
 
 @everywhere function call_test(args::Args)
-    acc, trends = factor3_test_spiking(args.rng, args.n_cb, args.n_iters, args.spk_args, args.repeats)
+    acc, trends = factor3_test_spiking(args.rng, args.n_cb, args.n_vsa, args.n_iters, args.spk_args, args.repeats)
 	result = Dict("accuracy" => acc, "trends" => trends)
 	save(args, result)
     return aurocs
