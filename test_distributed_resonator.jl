@@ -21,7 +21,7 @@ n_procs = parse(Int, ARGS[1])
 #    e.g. mem_per_cpu=100 => "--mem-per-cpu=100"
 #addprocs(SlurmManager(2), partition="bdwall", t="00:5:00")
 addprocs(n_procs)
-@everywhere include("graph_functions.jl")
+@everywhere include("resonator.jl")
 @everywhere using Dates: now
 @everywhere using JLD2: save_object
 
@@ -52,7 +52,7 @@ all_args = [Args(rng = Xoshiro(rand(key, UInt32)), spk_args = spk_args) for _ in
 end
 
 @everywhere function call_test(args::Args)
-    acc, trends = test_methods(args.nodes, args.p_edge, args.d_vsa, args.rng, args.spk_args)
+    acc, trends = factor3_test_spiking(args.rng, args.n_cb, args.n_iters, args.spk_args, args.repeats)
 	result = Dict("accuracy" => acc, "trends" => trends)
 	save(args, result)
     return aurocs
