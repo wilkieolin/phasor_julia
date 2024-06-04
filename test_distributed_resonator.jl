@@ -35,7 +35,7 @@ addprocs(n_procs)
 end
 
 key = Xoshiro(42)
-n_trials = 100
+n_trials = 6
 spk_args = SpikingArgs(solver = Tsit5(),
 						solver_args = Dict(:adaptive => false, :dt => 0.01),)
 
@@ -55,7 +55,7 @@ end
     acc, trends = factor3_test_spiking(args.rng, args.n_cb, args.n_vsa, args.n_iters, args.spk_args, args.repeats)
 	result = Dict("accuracy" => acc, "trends" => trends)
 	save(args, result)
-    return aurocs
+    return result
 end
 
 all_results = pmap(call_test, all_args)

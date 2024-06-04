@@ -212,9 +212,9 @@ function factor3_test_spiking(rng::AbstractRNG, n_cb::Int, n_vsa::Int, n_iters::
     end
 
     #measure the result's similarity to the original symbols
-    xmapfn = x -> final_similarity(x[1], X_cb)
-    ymapfn = x -> final_similarity(x[2], Y_cb)
-    zmapfn = x -> final_similarity(x[3], Z_cb)
+    xmapfn = x -> final_similarity(x[1], X_cb, spk_args)
+    ymapfn = x -> final_similarity(x[2], Y_cb, spk_args)
+    zmapfn = x -> final_similarity(x[3], Z_cb, spk_args)
     
     xsims = cat(collect(map(xmapfn, g))..., dims=2)'
     ysims = cat(collect(map(ymapfn, g))..., dims=2)'
