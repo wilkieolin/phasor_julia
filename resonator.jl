@@ -205,8 +205,8 @@ function factor3_test_spiking(rng::AbstractRNG, n_cb::Int, n_vsa::Int, n_iters::
     #resonate the factors
     g = resonate(sym, spk_args, tspan, n_iters, X_cb, Y_cb, Z_cb)
 
-    function final_similarity(train::SpikeTrain, codebook::SpikeTrain)
-        sim = similarity_outer(train, codebook, dims=1, reduce_dim=2, spk_args=sa, tspan=tspan)
+    function final_similarity(train::SpikeTrain, codebook::SpikeTrain, spk_args::SpikingArgs)
+        sim = similarity_outer(train, codebook, dims=1, reduce_dim=2, spk_args=spk_args, tspan=tspan)
         sim_final = [s[end] for s in sim]
         return sim_final
     end
