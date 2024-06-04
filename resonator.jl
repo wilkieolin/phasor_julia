@@ -216,9 +216,9 @@ function factor3_test_spiking(rng::AbstractRNG, n_cb::Int, n_vsa::Int, n_iters::
     ymapfn = x -> final_similarity(x[2], Y_cb, spk_args)
     zmapfn = x -> final_similarity(x[3], Z_cb, spk_args)
     
-    xsims = cat(collect(map(xmapfn, g))..., dims=2)'
-    ysims = cat(collect(map(ymapfn, g))..., dims=2)'
-    zsims = cat(collect(map(zmapfn, g))..., dims=2)'
+    xsims = cat(collect(map(xmapfn, g))..., dims=1)'
+    ysims = cat(collect(map(ymapfn, g))..., dims=1)'
+    zsims = cat(collect(map(zmapfn, g))..., dims=1)'
 
     #check the correctness of the resonated factors
     acc = check(fac_i, xsims, ysims, zsims)
