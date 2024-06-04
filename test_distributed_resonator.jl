@@ -26,43 +26,41 @@ addprocs(n_procs)
 @everywhere using JLD2: save_object
 
 @everywhere @kwdef struct Args
-	nodes::Int = 20
-	p_edge::Real = 0.1
+	n_cb::Int = 20
 	d_vsa::Int = 1024
+	n_iters::Int = 20
+	repeats::Int = 20
 	rng::AbstractRNG
 	spk_args::SpikingArgs
 end
 
-key = Xoshiro(52)
-n_trials = 12
-n_nodes = [25]
-p_edge = collect(0.1:0.1:0.9)
-d_vsa = [1024]
+key = Xoshiro(42)
+n_trials = 100
 spk_args = SpikingArgs(solver = Tsit5(),
 						solver_args = Dict(:adaptive => false, :dt => 0.01),)
 
-all_args = stack([[Args(nodes = n, p_edge = p, d_vsa = d, rng = Xoshiro(rand(key, UInt32)), spk_args = spk_args) for i in 1:n_trials] for n in n_nodes, p in p_edge, d in d_vsa]) |> vec
+all_args = [Args(rng = Xoshiro(rand(key, UInt32)), spk_args = spk_args) for _ in 1:n_trials]
 
 @everywhere function save(args, result, final::Bool=false)
 	if !final
-    	name = "data/graph/result_" * string(now()) * ".jld2"
+    	name = "data/resonator/result_" * string(now()) * ".jld2"
 	else
-		name = "data/graph/final_" * string(now()) * ".jld2"
+		name = "data/resonator/final_" * string(now()) * ".jld2"
 	end
     dict = ["arguments" => args, "results" => result]
     save_object(name, dict)
 end
 
 @everywhere function call_test(args::Args)
-    aurocs = test_methods(args.nodes, args.p_edge, args.d_vsa, args.rng, args.spk_args)
-	save(args, aurocs)
+    acc, trends = test_methods(args.nodes, args.p_edge, args.d_vsa, args.rng, args.spk_args)
+	result = Dict("accuracy" => acc, "trends" => trends)
+	save(args, result)
     return aurocs
 end
 
-result = pmap(call_test, all_args)
-print(result)
+all_results = pmap(call_test, all_args)
 
-save(all_args, result, true)
+save(all_args, all_results, true)
 
 # The Slurm resource allocation is released when all the workers have
 # exited

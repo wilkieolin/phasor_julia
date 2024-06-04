@@ -157,7 +157,7 @@ function check(factors, sims...)
     return correct
 end
 
-function factor3_test(rng::AbstractRNG, n_iters::Int)
+function factor3_test(rng::AbstractRNG, n:cb::Int, n_iters::Int)
     #generate the codebooks and composition given the rng
     X_cb = random_symbols((n_cb, n_vsa), rng)
     Y_cb = random_symbols((n_cb, n_vsa), rng)
@@ -186,7 +186,7 @@ function factor3_test(rng::AbstractRNG, n_iters::Int)
         
 end
 
-function factor3_test_spiking(rng::AbstractRNG, n_iters::Int, spk_args::SpikingArgs, repeats::Int)
+function factor3_test_spiking(rng::AbstractRNG, n_cb::Int, n_iters::Int, spk_args::SpikingArgs, repeats::Int)
     #set the simulation timespan
     tspan = (0.0, spk_args.t_period * repeats)
     #generate the codebooks and composition given the rng & convert to spikes to drive oscillators
