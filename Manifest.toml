@@ -1290,9 +1290,9 @@ version = "0.1.15"
 
 [[deps.LazyArrays]]
 deps = ["ArrayLayouts", "FillArrays", "LinearAlgebra", "MacroTools", "SparseArrays"]
-git-tree-sha1 = "640b4cd07cc3bcf68dcb16847e4f16323deb389c"
+git-tree-sha1 = "899d44fa1a575653df5721a7fccb4988f7f09b62"
 uuid = "5078a376-72f3-5289-bfd5-ec5146d43c02"
-version = "2.0.3"
+version = "2.0.4"
 
     [deps.LazyArrays.extensions]
     LazyArraysBandedMatricesExt = "BandedMatrices"
@@ -1481,9 +1481,9 @@ weakdeps = ["ChainRulesCore", "ForwardDiff", "SpecialFunctions"]
 
 [[deps.Lux]]
 deps = ["ADTypes", "Adapt", "ArgCheck", "ArrayInterface", "ChainRulesCore", "ConcreteStructs", "ConstructionBase", "FastClosures", "Functors", "GPUArraysCore", "LinearAlgebra", "LuxCore", "LuxDeviceUtils", "LuxLib", "MacroTools", "Markdown", "OhMyThreads", "PrecompileTools", "Preferences", "Random", "Reexport", "Setfield", "WeightInitializers"]
-git-tree-sha1 = "d5fbf786916789f89d4822456ef641c53a9fdc60"
+git-tree-sha1 = "101ffb569f50c6a19e9ebb66e828c8a320dde6ca"
 uuid = "b2108857-7c20-44ae-9111-449ecde12c47"
-version = "0.5.52"
+version = "0.5.53"
 
     [deps.Lux.extensions]
     LuxComponentArraysExt = "ComponentArrays"
@@ -1978,7 +1978,7 @@ version = "1.2.1"
 
 [[deps.PhasorNetworks]]
 deps = ["ComponentArrays", "DifferentialEquations", "Distributions", "Interpolations", "LinearAlgebra", "Lux", "LuxDeviceUtils", "MLDatasets", "MLUtils", "OneHotArrays", "Optimisers", "Random", "SciMLSensitivity", "Statistics", "Zygote"]
-git-tree-sha1 = "9f085868559b8d2d961947df7f45cf3ad5c5c5be"
+git-tree-sha1 = "b6922d69f1d225f1827b7ee9ac8beca23f8f275f"
 repo-rev = "main"
 repo-url = "https://github.com/wilkieolin/PhasorNetworks.jl.git"
 uuid = "c32d742c-e486-48f1-8804-9f6fb4d3f42c"
