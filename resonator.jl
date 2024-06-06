@@ -49,6 +49,15 @@ function initialize_guesses(spk_args::SpikingArgs, tspan::Tuple{<:Real, <:Real},
     return guesses
 end
 
+function normalize(x::AbstractArray)
+    m = maximum(x)
+    if abs(m) > 0.0
+        return x ./ m
+    else
+        return m
+    end
+end
+
 function refine(composite::AbstractArray, factor_codebook::AbstractArray, external::AbstractMatrix)
     #bind the symbols for external factors
     external = v_bind(external, dims=1)
@@ -59,7 +68,8 @@ function refine(composite::AbstractArray, factor_codebook::AbstractArray, extern
     #calculate the similarity to the codebook
     s = similarity_outer(factor, factor_codebook, dims=1)
     s = abs.(dropdims(s, dims=1))
-    new_guess = v_bundle_project(factor_codebook, s, zeros((size(s,1), size(factor_codebook,2))))
+    w = normalize(s)
+    new_guess = v_bundle_project(factor_codebook, w, zeros((size(s,1), size(factor_codebook,2))))
     return new_guess
 end 
 
@@ -75,6 +85,7 @@ function refine(composite::SpikeTrain, factor_codebook::SpikeTrain, external::Ar
     #calculate the similarity to the codebook
     s = similarity_outer(factor_codebook, factor, dims=1, reduce_dim=2, spk_args=spk_args, tspan=tspan)
     w = reshape(abs.([x[end] for x in vec(s)]), (1, :))
+    w = normalize(w)
     new_guess = v_bundle_project(factor_codebook, w, zeros((size(w,1), size(factor_codebook)[2])), spk_args=spk_args, tspan=tspan)
     return new_guess
 end
