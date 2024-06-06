@@ -29,14 +29,15 @@ addprocs(n_procs)
 	n_cb::Int = 20
 	n_vsa::Int = 1024
 	n_iters::Int = 20
-	repeats::Int = 20
+	repeats::Int = 10
 	rng::AbstractRNG
 	spk_args::SpikingArgs
 end
 
 key = Xoshiro(42)
-n_trials = 6
-spk_args = SpikingArgs(solver = Tsit5(),
+n_trials = 28
+spk_args = SpikingArgs(solver = Heun(),
+						threshold=0.001,
 						solver_args = Dict(:adaptive => false, :dt => 0.01),)
 
 all_args = [Args(rng = Xoshiro(rand(key, UInt32)), spk_args = spk_args) for _ in 1:n_trials]
