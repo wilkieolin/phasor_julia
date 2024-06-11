@@ -1,3 +1,4 @@
 *.png
 *.jld2
 .DS_Store
+pixel_data/
