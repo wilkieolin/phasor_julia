@@ -94,23 +94,11 @@ function interpolate_current(fit::Interpolations.FilledExtrapolation{<:Any, 4}, 
     return current
 end
 
-function log_scale_current(i::AbstractArray)
-    lo = -11500
-    hi = 11500
-    #clamp to within (0.001, 0.999 quantiles)
-    i = clamp.(i, lo, hi)
-    #log-scale & include sign
-    i = sign.(i) .* log1p.(abs.(i))
-    return i
-end
-
-function scale_current(i::AbstractArray)
-    lo = -11500
-    hi = 11500
-    #clamp to within (0.001, 0.999 quantiles)
-    i = clamp.(i, lo, hi)
-    #log-scale & include sign
-    i = i ./ (hi)
+function scale_charge(i::AbstractArray)
+    #lo = -690.0
+    hi = 15000.0
+    #scale with 99.99% at 6 sigma
+    i = 6.0 .* i ./ hi
     return i
 end
 
