@@ -1,6 +1,7 @@
-using CSV, DataFrames, Interpolations
+using CSV, DataFrames
+using Interpolations
 using Parquet2: Dataset
-using Interpolations: gradient
+import Interpolations.gradient as interp_gradient
 
 const X_PIXELS = 21
 const Y_PIXELS = 13
@@ -84,13 +85,13 @@ Using an interpolated or fit version of the charge data, take the gradient to es
 the current deposited with respect to time.
 """
 function interpolate_current(fit::Interpolations.FilledExtrapolation{<:Any, 3}, t::Real)
-    current = [gradient(fit, t, y, x)[1] for x in 1:X_PIXELS, y in 1:Y_PIXELS]
+    current = [interp_gradient(fit, t, y, x)[1] for x in 1:X_PIXELS, y in 1:Y_PIXELS]
     return current
 end
 
 function interpolate_current(fit::Interpolations.FilledExtrapolation{<:Any, 4}, t::Real)
     n_batch = size(fit, 4)
-    current = [gradient(fit, t, y, x, b)[1] for y in 1:Y_PIXELS, x in 1:X_PIXELS, b in 1:n_batch]
+    current = [interp_gradient(fit, t, y, x, b)[1] for y in 1:Y_PIXELS, x in 1:X_PIXELS, b in 1:n_batch]
     return current
 end
 
