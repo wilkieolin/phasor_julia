@@ -35,7 +35,7 @@ addprocs(n_procs)
 end
 
 key = Xoshiro(42)
-n_trials = 28
+n_trials = 256
 spk_args = SpikingArgs(solver = Heun(),
 						threshold=0.001,
 						solver_args = Dict(:adaptive => false, :dt => 0.01),)

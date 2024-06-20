@@ -56,9 +56,9 @@ function load_file(file_pair::Tuple{<:String, <:String})
     return charge, y_local, momentum
 end
 
-function get_samples(data_dir, files)
-    all_files = get_dataset(data_dir)
-    data = [load_file(all_files[f]) for f in files]
+
+function get_samples(files)
+    data = [load_file(f) for f in files]
 
     #read a set of charge over time samples
     charge = cat([d[1] for d in data]..., dims=4)
