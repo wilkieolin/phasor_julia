@@ -80,6 +80,10 @@ function process_inputs(x::AbstractArray, y_local::AbstractArray, spk_args::Spik
     return x_fn
 end
 
+x, xl, y = first(train_loader)
+x_tms = range(start=0.0, stop=1.0, length=size(x, 1)) |> collect
+n_px = size(x, 2) 
+n_in = n_px + 1
 sa = SpikingArgs()
 rng = Xoshiro(42)
 
