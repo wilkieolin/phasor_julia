@@ -1,7 +1,7 @@
 using Pkg
 Pkg.activate(".")
 
-using DifferentialEquations, PhasorNetworks, Lux, NNlib, Zygote, ComponentArrays, Optimisers, OneHotArrays
+using DifferentialEquations, PhasorNetworks, Lux, NNlib, Zygote, ComponentArrays, Optimisers, OneHotArrays, JLD2
 using MLUtils: DataLoader
 using Random: Xoshiro
 using ChainRulesCore: ignore_derivatives
