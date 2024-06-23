@@ -74,15 +74,15 @@ function momentum_to_label(pt, threshold::Real = 0.2)
     return y
 end
 
-function loss(x, x_tms, xl, y, model, ps, st, threshold)
-    drive_fn = process_inputs(x, x_tms, xl, sa)
+function loss(x, x_tms, xl, y, model, ps, st, threshold, spk_args::SpikingArgs=SpikingArgs())
+    drive_fn = process_inputs(x, x_tms, xl, spk_args)
     y_pred, st = model(drive_fn, ps, st)
     y = momentum_to_label(y, threshold)
     loss = quadrature_loss(y_pred, y) |> mean
     return loss, st
 end
 
-function train(model, ps, st, train_loader, x_tms, threshold::Real = 0.2; kws...)
+function train(model, ps, st, train_loader, x_tms, threshold::Real = 0.2; id::Int=1, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu
@@ -106,8 +106,8 @@ function train(model, ps, st, train_loader, x_tms, threshold::Real = 0.2; kws...
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
         end
         append!(losses, mean(epoch_losses))
-        println(" mean loss ", string(epoch_losses))
-        filename = joinpath("parameters", "seed_") * string(seed) * "_epoch_" * string(epoch) * ".jld2"
+        println(" mean loss ", string(mean(epoch_losses)))
+        filename = joinpath("parameters", "id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
         jldsave(filename; params=ps, state=st)
     end
 

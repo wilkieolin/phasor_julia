@@ -1,5 +1,3 @@
-using Pkg
-Pkg.activate(".")
 using Distributed
 n_procs = parse(Int, ARGS[1])
 
@@ -39,7 +37,7 @@ addprocs(n_procs)
     ps, st = Lux.setup(rng, ode_model)
     psa = ComponentArray(ps)
 
-    @time lhist, pst, stt = train(ode_model, psa, st, train_loader, x_tms, epochs=n_epochs)
+    @time lhist, pst, stt = train(ode_model, psa, st, train_loader, x_tms, id=seed, epochs=n_epochs)
 end
 
 exec = pmap(exec_training, seeds)
