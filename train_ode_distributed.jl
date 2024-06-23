@@ -5,7 +5,7 @@ n_procs = parse(Int, ARGS[1])
 
 seeds = collect(43:43+n_procs)
 addprocs(n_procs)
-@everywhere include("train_ode_distributed.jl")
+@everywhere include("train_ode_classifier.jl")
 @everywhere n_epochs = 200
 @everywhere function exec_training(seed::Int)
     data_dir = "pixel_data/"
