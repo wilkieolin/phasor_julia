@@ -1,13 +1,14 @@
 using Distributed
 n_procs = parse(Int, ARGS[1])
-type = ARGS[2]
-@assert type in ("mlp", "pmlp", "ode"), "Unrecognized network type requested"
+type_chk = ARGS[2]
+@assert type_chk in ("mlp", "pmlp", "ode") "Unrecognized network type requested"
 
 seeds = collect(43:43+n_procs)
 addprocs(n_procs)
 
 @everywhere include("train_classifier.jl")
 @everywhere n_epochs = 100
+@everywhere type = $type_chk
 
 @everywhere function exec_training(seed::Int)
     global type

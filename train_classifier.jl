@@ -32,6 +32,7 @@ end
 function process_inputs_mlp(x, y_local)
     x = scale_charge(x)
     x = sum(x, dims=(1,3))
+    n_px = size(x,2)
     n_batch = size(x, 4)
     x = reshape(x, (n_px, n_batch))
     y_local = reshape(y_local, (1, n_batch))
@@ -66,7 +67,7 @@ function train_mlp(model, ps, st, train_loader, threshold::Real = 0.2; id::Int, 
     for epoch in 1:args.epochs
         epoch_losses = []
         for (x, xl, y) in train_loader
-            (loss_val, st), gs = withgradient(p -> loss(x, xl, y, model, p, st, threshold), ps)
+            (loss_val, st), gs = withgradient(p -> loss_mlp(x, xl, y, model, p, st, threshold), ps)
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
         end
@@ -90,6 +91,7 @@ function process_inputs_pmlp(x, y_local)
     x = scale_charge(x)
     x = sum(x, dims=(1,3))
     n_batch = size(x, 4)
+    n_px = size(x,2)
     x = reshape(x, (n_px, n_batch))
     y_local = reshape(y_local, (1, n_batch))
 
