@@ -76,7 +76,7 @@ function train_mlp(model, ps, st, train_loader, threshold::Real = 0.2; id::Int, 
         println(" mean loss ", string(mean(epoch_losses)))
     end
 
-    filename = joinpath("parameters", "mlp_id_") * string(id) * "_epoch_" * string(args.epoch) * ".jld2"
+    filename = joinpath("parameters", "mlp_id_") * string(id) * "_epoch_" * string(args.epochs) * ".jld2"
     jldsave(filename; params=ps, state=st)
 
     jldsave(joinpath("parameters", "mlp_losses_id") * string(id) * ".jld2"; losses = losses)
