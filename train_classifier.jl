@@ -66,12 +66,14 @@ function train_mlp(model, ps, st, train_loader, threshold::Real = 0.2; id::Int, 
     ## Training
     for epoch in 1:args.epochs
         epoch_losses = []
+        print("Epoch ", epoch)
         for (x, xl, y) in train_loader
             (loss_val, st), gs = withgradient(p -> loss_mlp(x, xl, y, model, p, st, threshold), ps)
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
         end
         append!(losses, mean(epoch_losses))
+        println(" mean loss ", string(mean(epoch_losses)))
     end
 
     filename = joinpath("parameters", "mlp_id_") * string(id) * "_epoch_" * string(args.epoch) * ".jld2"
@@ -121,6 +123,7 @@ function train_pmlp(model, ps, st, train_loader, threshold::Real = 0.2; id::Int,
 
     ## Training
     for epoch in 1:args.epochs
+        print("Epoch ", epoch)
         epoch_losses = []
         for (x, xl, y) in train_loader
             (loss_val, st), gs = withgradient(p -> loss_pmlp(x, xl, y, model, p, st, threshold), ps)
@@ -128,6 +131,7 @@ function train_pmlp(model, ps, st, train_loader, threshold::Real = 0.2; id::Int,
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
         end
         append!(losses, mean(epoch_losses))
+        println(" mean loss ", string(mean(epoch_losses)))
         filename = joinpath("parameters", "pmlp_id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
         jldsave(filename; params=ps, state=st)
     end
