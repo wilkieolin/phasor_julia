@@ -55,7 +55,6 @@ addprocs(n_procs)
                     )
 
         ps, st = Lux.setup(rng, model)
-        psa = ComponentArray(ps)
         @time lhist, pst, stt = train_pmlp(model, ps, st, train_loader, id=seed, epochs=n_epochs)
 
     elseif type == "mlp"
@@ -67,8 +66,7 @@ addprocs(n_procs)
                     )
         
         ps, st = Lux.setup(rng, model)
-        psa = ComponentArray(ps)
-        @time lhist, pst, stt = train_mlp(model, psa, st, train_loader, id=seed, epochs=n_epochs)        
+        @time lhist, pst, stt = train_mlp(model, ps, st, train_loader, id=seed, epochs=n_epochs)        
     end
 
     return 1
