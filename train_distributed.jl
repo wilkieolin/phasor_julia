@@ -56,7 +56,7 @@ addprocs(n_procs)
 
         ps, st = Lux.setup(rng, model)
         psa = ComponentArray(ps)
-        @time lhist, pst, stt = train(model, ps, st, train_loader, id=seed, epochs=n_epochs)
+        @time lhist, pst, stt = train_pmlp(model, ps, st, train_loader, id=seed, epochs=n_epochs)
 
     elseif type == "mlp"
         model = Chain(
