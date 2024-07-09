@@ -33,40 +33,18 @@ addprocs(n_procs)
     rng = Xoshiro(seed)
 
     if type == "ode"
-        ode_fn = Chain(BatchNorm(n_in),
-                        x -> tanh.(x),
-                        Dense(n_in => 128))
-
-
-        ode_model = Chain(PhasorODE(ode_fn, tspan=(0.0, 1.0), dt=0.01),
-                        x -> complex_to_angle(Array(x)[:,:,end]),
-                        PhasorDenseF32(128 => 3))
-
+        #models defined in train_classifier.jl
         ps, st = Lux.setup(rng, ode_model)
         psa = ComponentArray(ps)
         @time lhist, pst, stt = train_ode(ode_model, psa, st, train_loader, x_tms, id=seed, epochs=n_epochs)
 
     elseif type == "pmlp"
-        model = Chain(
-                        BatchNorm(n_in),
-                        x -> tanh.(x),
-                        PhasorDense(n_in => 128),
-                        PhasorDense(128 => 3) 
-                    )
-
-        ps, st = Lux.setup(rng, model)
-        @time lhist, pst, stt = train_pmlp(model, ps, st, train_loader, id=seed, epochs=n_epochs)
+        ps, st = Lux.setup(rng, pmlp_model)
+        @time lhist, pst, stt = train_pmlp(pmlp_model, ps, st, train_loader, id=seed, epochs=n_epochs)
 
     elseif type == "mlp"
-        model = Chain(
-                    BatchNorm(n_in),
-                    x -> tanh.(x),
-                    Dense(n_in => 128, relu),
-                    Dense(128 => 3) 
-                    )
-        
-        ps, st = Lux.setup(rng, model)
-        @time lhist, pst, stt = train_mlp(model, ps, st, train_loader, id=seed, epochs=n_epochs)        
+        ps, st = Lux.setup(rng, mlp_model)
+        @time lhist, pst, stt = train_mlp(mlp_model, ps, st, train_loader, id=seed, epochs=n_epochs)        
     end
 
     return 1

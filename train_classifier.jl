@@ -16,6 +16,12 @@ include("pixel_data.jl")
     use_cuda::Bool = false   ## use gpu (if cuda available)
 end
 
+#13 input columns, plus y-local are used to define the input data
+n_in = 14
+#set the oscillator/spiking config
+sa = SpikingArgs()
+repeats = 3
+
 function get_truth(pt, threshold::Real = 0.2)
     return 1 .* (pt .> threshold) .+ 2 .* (pt .< -threshold)
 end
@@ -28,6 +34,14 @@ end
 ###
 ### Code for conventional multi-layer perceptron
 ###
+mlp_model = Chain(
+                    BatchNorm(n_in),
+                    x -> tanh.(x),
+                    Dense(n_in => 128, relu),
+                    Dense(128 => 3) 
+                    )
+
+              
 
 function process_inputs_mlp(x, y_local)
     x = scale_charge(x)
@@ -88,6 +102,30 @@ end
 ###
 ### Code for phasor-based mlp
 ###
+pmlp_model = Chain(
+                        BatchNorm(n_in),
+                        x -> tanh.(x),
+                        PhasorDense(n_in => 128),
+                        PhasorDense(128 => 3) 
+                    )
+
+pmlp_model_spk = Chain(
+                        BatchNorm(n_in),
+                        x -> tanh.(x),
+                        MakeSpiking(sa, repeats),
+                        PhasorDense(n_in => 128),
+                        PhasorDense(128 => 3) 
+                    )                    
+
+function convert_pmlp_params(pmlp_ps)
+    # Add a dummy layer of params for the make_spiking layer
+    spk_ps = (layer_1 = pmlp_ps.layer_1, 
+            layer_2 = pmlp_ps.layer_2,
+            layer_3 = NamedTuple(),
+            layer_4 = pmlp_ps.layer_3,
+            layer_5 = pmlp_ps.layer_4)
+    return spk_ps
+end      
 
 function process_inputs_pmlp(x, y_local)
     x = scale_charge(x)
@@ -143,6 +181,28 @@ end
 ###
 ### Code for analog, continuous-time driven phasor NN
 ###
+ode_fn = Chain(BatchNorm(n_in),
+                        x -> tanh.(x),
+                        Dense(n_in => 128))
+
+
+ode_model = Chain(PhasorODE(ode_fn, tspan=(0.0, 1.0), dt=0.01),
+                x -> complex_to_angle(Array(x)[:,:,end]),
+                PhasorDenseF32(128 => 3))
+
+ode_model_spk = Chain(PhasorODE(ode_fn, tspan=(0.0, 1.0), dt=0.01),
+                x -> complex_to_angle(Array(x)[:,:,end]),
+                MakeSpiking(sa, repeats),
+                PhasorDenseF32(128 => 3))
+
+function convert_ode_params(ode_ps)
+    # Add a dummy layer of params for the make_spiking layer
+    spk_ps = (layer_1 = ode_ps.layer_1, 
+            layer_2 = ode_ps.layer_2,
+            layer_3 = NamedTuple(),
+            layer_4 = ode_ps.layer_3)
+    return spk_ps
+end      
 
 function process_inputs_ode(x::AbstractArray, x_tms::AbstractVector, y_local::AbstractArray, spk_args::SpikingArgs)
     v_fn = t -> sum(scale_charge(interpolate_2D(t, x_tms, x)), dims=2)[:,1,:]
