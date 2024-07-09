@@ -191,7 +191,23 @@ function tpr_fpr(prediction, truth, threshold::Real = 0.2, points::Int = 201, ep
 
     return tpr, fpr
 end
-    
+
+function find_duplicates(x::AbstractVector)
+    u = sort!(unique(x))
+    matches = [x .== uval for uval in u]
+    return u, matches
+end
+
+function average_duplicate_knots(x, y)
+    x_unique, x_duplicates = find_duplicates(x)
+    y_mean = map(x -> sum(x .* y)/sum(x), x_duplicates)
+    y_mean[end] = 1.0
+    if x_unique[end] != 1.0
+        append!(x_unique, 1.0)
+        append!(y_mean, 1.0)
+    end
+    return x_unique, y_mean
+end  
 
 function interpolate_roc(roc)
     tpr, fpr = roc
