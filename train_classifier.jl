@@ -20,7 +20,7 @@ end
 n_in = 14
 #set the oscillator/spiking config
 sa = SpikingArgs()
-repeats = 3
+repeats = 20
 
 function get_truth(pt, threshold::Real = 0.2)
     return 1 .* (pt .> threshold) .+ 2 .* (pt .< -threshold)
