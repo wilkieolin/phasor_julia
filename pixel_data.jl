@@ -113,28 +113,35 @@ function interpolate_2D(t::Real, times::Vector{<:Real}, values::AbstractArray{<:
 
             mixture = proportion .* values[i_next,:,:,:] .+ (1 - proportion) .* values[i_prev,:,:,:]
             charge .+= mixture
+        elseif t >= times[end]
+            charge .+= values[end,:,:,:]
         end
     end
 
     return charge
 end
 
-function ylocal_to_current(t::Real, y_local::AbstractArray, spk_args::SpikingArgs; sigma::Real = 9.0, y_range::Real = 32.5)
-    output = zero(y_local)
-
-    ignore_derivatives() do
-        y_local /= y_range
-        phases = (y_local ./ 2.0) .+ 0.5
-        times = phases .* spk_args.t_period
-        times = mod.(times, spk_args.t_period)
-
-        #add currents into the active synapses
-        current_kernel = x -> gaussian_kernel(x, t, spk_args.t_window)
-        impulses = current_kernel(times)
-        output .+= impulses
+function charge_to_current(values::AbstractArray, x_tms::AbstractVector; spk_args::SpikingArgs, tspan::Tuple)
+    function current_fn(t)
+        #scale the charge for each pixel using dataset stats (Y X B)
+        q = scale_charge(interpolate_2D(t, x_tms, x))
+        #take the mean charge accumulated over each row (X)
+        q = mean(q, dims=2)[:,1,:]
     end
 
-    return output
+    current = LocalCurrent(current_fn, (size(values,2), size(values,4)), 0.0)
+    call = CurrentCall(current, spk_args, tspan)
+
+    return call
+end
+
+function ylocal_to_current(y_local::AbstractArray; spk_args::SpikingArgs, tspan::Tuple, sigma::Real = 9.0, y_range::Real = 32.5)
+    y_local /= y_range
+    phases = (y_local ./ 2.0) .+ 0.5
+    phases = reshape(phases, (1, :))
+    current_fn = phase_to_current(phases, spk_args = spk_args, tspan = tspan, offset = 0.0)
+
+    return current_fn
 end
 
 function scale_charge(i::AbstractArray)
