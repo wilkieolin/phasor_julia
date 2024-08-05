@@ -21,6 +21,7 @@ n_in = 14
 #set the oscillator/spiking config
 sa = SpikingArgs()
 repeats = 20
+tspan = (0.0, 10.0)
 
 function get_truth(pt, threshold::Real = 0.2)
     return 1 .* (pt .> threshold) .+ 2 .* (pt .< -threshold)
@@ -181,46 +182,27 @@ end
 ###
 ### Code for analog, continuous-time driven phasor NN
 ###
-ode_fn = Chain(BatchNorm(n_in),
-                        x -> tanh.(x),
-                        Dense(n_in => 128))
 
+ode_model = Chain(x -> process_sample(x, spk_args=spk_args, tspan=tspan),
+                PhasorDenseF32(n_in => 128, return_solution=true),
+                x -> mean_phase(x, 1, spk_args=spk_args, offset=0.0),
+                PhasorDenseF32(128 => 3)
+                )
 
-ode_model = Chain(PhasorODE(ode_fn, tspan=(0.0, 1.0), dt=0.01),
-                x -> complex_to_angle(Array(x)[:,:,end]),
-                PhasorDenseF32(128 => 3))
+ode_model_spk = Chain(x -> process_sample(x, spk_args=spk_args, tspan=tspan),
+                PhasorDenseF32(n_in => 128, return_solution=true),
+                x -> SpikingCall(solution_to_train(x, tspan, spk_args=spk_args, offset=0.0)),
+                PhasorDenseF32(128 => 3)
+                )
 
-ode_model_spk = Chain(PhasorODE(ode_fn, tspan=(0.0, 1.0), dt=0.01),
-                x -> complex_to_angle(Array(x)[:,:,end]),
-                MakeSpiking(sa, repeats),
-                PhasorDenseF32(128 => 3))
-
-function convert_ode_params(ode_ps)
-    # Add a dummy layer of params for the make_spiking layer
-    spk_ps = (layer_1 = ode_ps.layer_1, 
-            layer_2 = ode_ps.layer_2,
-            layer_3 = NamedTuple(),
-            layer_4 = ode_ps.layer_3)
-    return spk_ps
-end      
-
-function process_inputs_ode(x::AbstractArray, x_tms::AbstractVector, y_local::AbstractArray, spk_args::SpikingArgs)
-    v_fn = t -> sum(scale_charge(interpolate_2D(t, x_tms, x)), dims=2)[:,1,:]
-    y_fn = t -> ylocal_to_current(t, y_local, spk_args)
-
-    x_fn = t -> cat(v_fn(t), reshape(y_fn(t), (1,:)), dims=1)
-    return x_fn
-end
-
-function loss_ode(x, x_tms, xl, y, model, ps, st, threshold, spk_args::SpikingArgs=SpikingArgs())
-    drive_fn = process_inputs_ode(x, x_tms, xl, spk_args)
-    y_pred, st = model(drive_fn, ps, st)
+function loss_ode(x, y, model, ps, st, threshold, spk_args::SpikingArgs)
+    y_pred, st = model(x, ps, st)
     y = momentum_to_label(y, threshold)
     loss = quadrature_loss(y_pred, y) |> mean
     return loss, st
 end
 
-function train_ode(model, ps, st, train_loader, x_tms, threshold::Real = 0.2; id::Int=1, kws...)
+function train(model, ps, st, train_loader, threshold::Real = 0.2; id::Int=1, verbose::Bool = true, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu
@@ -239,17 +221,18 @@ function train_ode(model, ps, st, train_loader, x_tms, threshold::Real = 0.2; id
         print("Epoch ", epoch)
         epoch_losses = []
         for (x, xl, y) in train_loader
-            (loss_val, st), gs = withgradient(p -> loss_ode(x, x_tms, xl, y, model, p, st, threshold), ps)
+            (loss_val, st), gs = withgradient(p -> loss((x, xl), y, model, p, st, threshold, spk_args), ps)
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
+            if verbose
+                println(reduce(*, ("Epoch ", string(epoch), ", loss ", string(loss_val))))
+            end
         end
         append!(losses, mean(epoch_losses))
         println(" mean loss ", string(mean(epoch_losses)))
-        filename = joinpath("parameters", "ode_id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
+        filename = joinpath("parameters", "id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
         jldsave(filename; params=ps, state=st)
     end
-
-    jldsave(joinpath("parameters", "ode_losses_id") * string(id) * ".jld2"; losses = losses)
 
     return losses, ps, st
 end

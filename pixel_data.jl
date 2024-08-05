@@ -121,7 +121,9 @@ function interpolate_2D(t::Real, times::Vector{<:Real}, values::AbstractArray{<:
     return charge
 end
 
-function charge_to_current(values::AbstractArray, x_tms::AbstractVector; spk_args::SpikingArgs, tspan::Tuple)
+function charge_to_current(values::AbstractArray; spk_args::SpikingArgs, tspan::Tuple)
+    x_tms = range(start=0.0, stop=1.0, length=size(values, 1)) |> collect
+    
     function current_fn(t)
         #scale the charge for each pixel using dataset stats (Y X B)
         q = scale_charge(interpolate_2D(t, x_tms, x))
@@ -142,6 +144,22 @@ function ylocal_to_current(y_local::AbstractArray; spk_args::SpikingArgs, tspan:
     current_fn = phase_to_current(phases, spk_args = spk_args, tspan = tspan, offset = 0.0)
 
     return current_fn
+end
+
+function cat_currents(x::CurrentCall, y::CurrentCall; dim::Int)
+    @assert x.spk_args == y.spk_args "Spiking args must match"
+    new_tspan = (min(x.t_span[1], y.t_span[1]), max(x.t_span[2], y.t_span[2]))
+    x_i = x.current
+    y_i = y.current
+    @assert x_i.offset == y_i.offset "Current offsets must match to concatenate"
+
+    new_shape = [i == dim ? x_i.shape[i] + y_i.shape[i] : x_i.shape[i] for i in 1:length(x_i.shape)] |> Tuple
+    new_current = t -> cat(x_i.current_fn(t), y_i.current_fn(t), dims=dim)
+    new_offset = x_i.offset
+
+    current = LocalCurrent(new_current, new_shape, new_offset)
+    call = CurrentCall(current, x.spk_args, new_tspan)
+    return call
 end
 
 function scale_charge(i::AbstractArray)
