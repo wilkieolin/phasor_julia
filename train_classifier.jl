@@ -221,7 +221,7 @@ function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1
         print("Epoch ", epoch)
         epoch_losses = []
         for (x, xl, y) in train_loader
-            (loss_val, st), gs = withgradient(p -> loss_ode((x, xl), y, model, p, st, threshold, spk_args), ps)
+            (loss_val, st), gs = withgradient(p -> loss_ode((x, xl), y, model, p, st, threshold, sa), ps)
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
             if verbose
