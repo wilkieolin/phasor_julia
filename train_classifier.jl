@@ -19,7 +19,7 @@ end
 #13 input columns, plus y-local are used to define the input data
 n_in = 14
 #set the oscillator/spiking config
-sa = SpikingArgs()
+spk_args = SpikingArgs()
 repeats = 20
 tspan = (0.0, 10.0)
 
@@ -113,7 +113,7 @@ pmlp_model = Chain(
 pmlp_model_spk = Chain(
                         BatchNorm(n_in),
                         x -> tanh.(x),
-                        MakeSpiking(sa, repeats),
+                        MakeSpiking(spk_args, repeats),
                         PhasorDense(n_in => 128),
                         PhasorDense(128 => 3) 
                     )                    
@@ -221,7 +221,7 @@ function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1
         print("Epoch ", epoch)
         epoch_losses = []
         for (x, xl, y) in train_loader
-            (loss_val, st), gs = withgradient(p -> loss_ode((x, xl), y, model, p, st, threshold, sa), ps)
+            (loss_val, st), gs = withgradient(p -> loss_ode((x, xl), y, model, p, st, threshold, spk_args), ps)
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
             if verbose

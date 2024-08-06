@@ -126,7 +126,7 @@ function charge_to_current(values::AbstractArray; spk_args::SpikingArgs, tspan::
     
     function current_fn(t)
         #scale the charge for each pixel using dataset stats (Y X B)
-        q = scale_charge(interpolate_2D(t, x_tms, x))
+        q = scale_charge(interpolate_2D(t, x_tms, values))
         #take the mean charge accumulated over each row (X)
         q = mean(q, dims=2)[:,1,:]
     end
@@ -160,6 +160,14 @@ function cat_currents(x::CurrentCall, y::CurrentCall; dim::Int)
     current = LocalCurrent(new_current, new_shape, new_offset)
     call = CurrentCall(current, x.spk_args, new_tspan)
     return call
+end
+
+function process_sample(x; spk_args::SpikingArgs, tspan::Tuple)
+    charge, ylocal = x
+    x1 = charge_to_current(charge, spk_args=spk_args, tspan=tspan)
+    x2 = ylocal_to_current(ylocal, spk_args=spk_args, tspan=tspan)
+    xf = cat_currents(x1, x2, dim=1)
+    return xf
 end
 
 function scale_charge(i::AbstractArray)
