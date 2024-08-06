@@ -65,7 +65,7 @@ function loss_mlp(x, xl, y, model, ps, st, threshold)
     return loss, st
 end
 
-function train_mlp(model, ps, st, train_loader, threshold::Real = 0.2; id::Int, kws...)
+function train_mlp(model, ps, st, train_loader; threshold::Real = 0.2, id::Int, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu
@@ -147,7 +147,7 @@ function loss_pmlp(x, xl, y, model, ps, st, threshold)
     return loss, st
 end
 
-function train_pmlp(model, ps, st, train_loader, threshold::Real = 0.2; id::Int, kws...)
+function train_pmlp(model, ps, st, train_loader; threshold::Real = 0.2, id::Int, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu
@@ -202,7 +202,7 @@ function loss_ode(x, y, model, ps, st, threshold, spk_args::SpikingArgs)
     return loss, st
 end
 
-function train(model, ps, st, train_loader, threshold::Real = 0.2; id::Int=1, verbose::Bool = true, kws...)
+function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1, verbose::Bool = true, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu

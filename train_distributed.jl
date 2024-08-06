@@ -22,11 +22,10 @@ addprocs(n_procs)
 
     args = Args(batchsize = 128)
 
-    test_loader = DataLoader((q_test, ylocal_test, pt_test), batchsize=args.batchsize)
-    train_loader = DataLoader((q, ylocal, pt), batchsize=args.batchsize)
+    test_loader = DataLoader((q_test, ylocal_test, pt_test), partial=false, batchsize=args.batchsize)
+    train_loader = DataLoader((q, ylocal, pt), partial=false, batchsize=args.batchsize)
 
     x, xl, y = first(train_loader)
-    x_tms = range(start=0.0, stop=1.0, length=size(x, 1)) |> collect
     n_px = size(x, 2) 
     n_in = n_px + 1
     sa = SpikingArgs()
@@ -36,7 +35,7 @@ addprocs(n_procs)
         #models defined in train_classifier.jl
         ps, st = Lux.setup(rng, ode_model)
         psa = ComponentArray(ps)
-        @time lhist, pst, stt = train_ode(ode_model, psa, st, train_loader, x_tms, id=seed, epochs=n_epochs)
+        @time lhist, pst, stt = train_ode(ode_model, psa, st, train_loader, id=seed, epochs=n_epochs)
 
     elseif type == "pmlp"
         ps, st = Lux.setup(rng, pmlp_model)
