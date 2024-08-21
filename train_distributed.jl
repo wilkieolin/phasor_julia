@@ -7,7 +7,7 @@ seeds = collect(43:43+n_samples)
 addprocs(n_samples)
 
 @everywhere include("train_classifier.jl")
-@everywhere n_epochs = 100
+@everywhere n_epochs = 10
 @everywhere type = $type_chk
 
 @everywhere function exec_training(seed::Int)
