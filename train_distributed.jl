@@ -1,11 +1,10 @@
 using Distributed
-n_procs = parse(Int, ARGS[1])
+n_samples = parse(Int, ARGS[1])
 type_chk = ARGS[2]
-n_samples = 6
 @assert type_chk in ("mlp", "pmlp", "ode") "Unrecognized network type requested"
 
 seeds = collect(43:43+n_samples)
-addprocs(n_procs)
+addprocs(n_samples)
 
 @everywhere include("train_classifier.jl")
 @everywhere n_epochs = 100

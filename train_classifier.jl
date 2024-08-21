@@ -197,7 +197,7 @@ ode_model = Chain(PhasorResonant(n_in, spk_args, true),
                 PhasorDenseF32(128 => 3)
                 )
 
-ode_model_spk = Chain(PhasorResonant(n_in, spk_arsg, false),
+ode_model_spk = Chain(PhasorResonant(n_in, spk_args, false),
                 x -> x,
                 PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
