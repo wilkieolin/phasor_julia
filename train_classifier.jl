@@ -43,7 +43,6 @@ mlp_model = Chain(
                     )
 
               
-
 function process_inputs_mlp(x, y_local)
     x = scale_charge(x)
     x = sum(x, dims=(1,3))
@@ -183,15 +182,24 @@ end
 ### Code for analog, continuous-time driven phasor NN
 ###
 
-ode_model = Chain(x -> process_sample(x, spk_args=spk_args, tspan=tspan),
-                PhasorDenseF32(n_in => 128, return_solution=true),
-                x -> mean_phase(x, 1, spk_args=spk_args, offset=0.0),
+function process_sample(x; spk_args::SpikingArgs, tspan::Tuple, kwargs...)
+    charge, ylocal = x
+    x1 = charge_to_current(charge, spk_args=spk_args, tspan=tspan)
+    x2 = ylocal_to_current(ylocal, spk_args=spk_args, tspan=tspan)
+    xf = cat_currents(x1, x2, dim=1)
+    
+    return xf
+end
+
+ode_model = Chain(PhasorResonant(n_in, true),
+                x -> mean_phase(x, 1, spk_args=spk_args, offset=0.0, threshold=false),
+                PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
                 )
 
-ode_model_spk = Chain(x -> process_sample(x, spk_args=spk_args, tspan=tspan),
-                PhasorDenseF32(n_in => 128, return_solution=true),
-                x -> SpikingCall(solution_to_train(x, tspan, spk_args=spk_args, offset=0.0)),
+ode_model_spk = Chain(PhasorResonant(n_in, false),
+                x -> x,
+                PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
                 )
 
@@ -202,7 +210,7 @@ function loss_ode(x, y, model, ps, st, threshold, spk_args::SpikingArgs)
     return loss, st
 end
 
-function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1, verbose::Bool = true, kws...)
+function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1, verbose::Bool = false, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu
@@ -221,16 +229,17 @@ function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1
         print("Epoch ", epoch)
         epoch_losses = []
         for (x, xl, y) in train_loader
-            (loss_val, st), gs = withgradient(p -> loss_ode((x, xl), y, model, p, st, threshold, spk_args), ps)
-            append!(epoch_losses, loss_val)
+            x = process_sample((x, xl), spk_args=spk_args, tspan=tspan)
+            (loss_val, st), gs = withgradient(p -> loss_ode(x, y, model, p, st, threshold, spk_args), ps)
+            append!(losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
             if verbose
                 println(reduce(*, ("Epoch ", string(epoch), ", loss ", string(loss_val))))
             end
         end
-        append!(losses, mean(epoch_losses))
+        #append!(losses, mean(epoch_losses))
         println(" mean loss ", string(mean(epoch_losses)))
-        filename = joinpath("parameters", "id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
+        filename = reduce(*, [joinpath("parameters", "ode_id_"), string(id), "_epoch_", string(epoch), ".jld2"])
         jldsave(filename; params=ps, state=st)
     end
 

@@ -121,12 +121,34 @@ function interpolate_2D(t::Real, times::Vector{<:Real}, values::AbstractArray{<:
     return charge
 end
 
+
+function interpolate_2D_derivative(t::Real, times::Vector{<:Real}, values::AbstractArray{<:Real,4})
+    n_steps, n_y, n_x, n_batch = size(values)
+    #extrapolate to zeros
+    current = zeros((n_y, n_x, n_batch),)
+
+    ignore_derivatives() do
+        if t > times[1] && t < times[end]
+            i_next = findfirst(times .> t)
+            i_prev = i_next - 1
+
+            t_next = times[i_next]
+            t_prev = times[i_prev]
+            dt = t_next - t_prev
+            d = (values[i_next,:,:,:] .- values[i_prev,:,:,:]) ./ dt
+            current .+= d
+        end
+    end
+
+    return current
+end
+
 function charge_to_current(values::AbstractArray; spk_args::SpikingArgs, tspan::Tuple)
     x_tms = range(start=0.0, stop=1.0, length=size(values, 1)) |> collect
     
     function current_fn(t)
         #scale the charge for each pixel using dataset stats (Y X B)
-        q = scale_charge(interpolate_2D(t, x_tms, values))
+        q = scale_charge(interpolate_2D_derivative(t, x_tms, values))
         #take the mean charge accumulated over each row (X)
         q = mean(q, dims=2)[:,1,:]
     end
@@ -141,7 +163,7 @@ function ylocal_to_current(y_local::AbstractArray; spk_args::SpikingArgs, tspan:
     y_local /= y_range
     phases = (y_local ./ 2.0) .+ 0.5
     phases = reshape(phases, (1, :))
-    current_fn = phase_to_current(phases, spk_args = spk_args, tspan = tspan, offset = 0.0)
+    current_fn = phase_to_current(phases, spk_args = spk_args, tspan = tspan, offset = 0.0, repeat=false)
 
     return current_fn
 end
