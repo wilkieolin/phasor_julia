@@ -35,15 +35,15 @@ addprocs(n_procs)
         #models defined in train_classifier.jl
         ps, st = Lux.setup(rng, ode_model)
         psa = ComponentArray(ps)
-        @time lhist, pst, stt = train_ode(ode_model, psa, st, train_loader, id=seed, epochs=n_epochs)
+        lhist, pst, stt = train_ode(ode_model, psa, st, train_loader, id=seed, epochs=n_epochs)
 
     elseif type == "pmlp"
         ps, st = Lux.setup(rng, pmlp_model)
-        @time lhist, pst, stt = train_pmlp(pmlp_model, ps, st, train_loader, id=seed, epochs=n_epochs)
+        lhist, pst, stt = train_pmlp(pmlp_model, ps, st, train_loader, id=seed, epochs=n_epochs)
 
     elseif type == "mlp"
         ps, st = Lux.setup(rng, mlp_model)
-        @time lhist, pst, stt = train_mlp(mlp_model, ps, st, train_loader, id=seed, epochs=n_epochs)        
+        lhist, pst, stt = train_mlp(mlp_model, ps, st, train_loader, id=seed, epochs=n_epochs)        
     end
 
     return 1

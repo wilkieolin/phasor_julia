@@ -86,7 +86,7 @@ function train_mlp(model, ps, st, train_loader; threshold::Real = 0.2, id::Int, 
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
         end
-        append!(losses, mean(epoch_losses))
+        append!(losses, epoch_losses)
         println(" mean loss ", string(mean(epoch_losses)))
     end
 
@@ -168,7 +168,7 @@ function train_pmlp(model, ps, st, train_loader; threshold::Real = 0.2, id::Int,
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
         end
-        append!(losses, mean(epoch_losses))
+        append!(losses, epoch_losses)
         println(" mean loss ", string(mean(epoch_losses)))
         filename = joinpath("parameters", "pmlp_id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
         jldsave(filename; params=ps, state=st)
@@ -191,26 +191,26 @@ function process_sample(x; spk_args::SpikingArgs, tspan::Tuple, kwargs...)
     return xf
 end
 
-ode_model = Chain(PhasorResonant(n_in, true),
+ode_model = Chain(PhasorResonant(n_in, spk_args, true),
                 x -> mean_phase(x, 1, spk_args=spk_args, offset=0.0, threshold=false),
                 PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
                 )
 
-ode_model_spk = Chain(PhasorResonant(n_in, false),
+ode_model_spk = Chain(PhasorResonant(n_in, spk_arsg, false),
                 x -> x,
                 PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
                 )
 
-function loss_ode(x, y, model, ps, st, threshold, spk_args::SpikingArgs)
+function loss_ode(x, y, model, ps, st, threshold)
     y_pred, st = model(x, ps, st)
     y = momentum_to_label(y, threshold)
     loss = quadrature_loss(y_pred, y) |> mean
     return loss, st
 end
 
-function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1, verbose::Bool = false, kws...)
+function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1, verbose::Bool = true, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu
@@ -230,18 +230,20 @@ function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1
         epoch_losses = []
         for (x, xl, y) in train_loader
             x = process_sample((x, xl), spk_args=spk_args, tspan=tspan)
-            (loss_val, st), gs = withgradient(p -> loss_ode(x, y, model, p, st, threshold, spk_args), ps)
-            append!(losses, loss_val)
+            (loss_val, st), gs = withgradient(p -> loss_ode(x, y, model, p, st, threshold), ps)
+            append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
             if verbose
                 println(reduce(*, ("Epoch ", string(epoch), ", loss ", string(loss_val))))
             end
         end
-        #append!(losses, mean(epoch_losses))
+        append!(losses, epoch_losses)
         println(" mean loss ", string(mean(epoch_losses)))
-        filename = reduce(*, [joinpath("parameters", "ode_id_"), string(id), "_epoch_", string(epoch), ".jld2"])
+        filename = joinpath("parameters", "ode_id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
         jldsave(filename; params=ps, state=st)
     end
+
+    jldsave(joinpath("parameters", "ode_losses_id") * string(id) * ".jld2"; losses = losses)
 
     return losses, ps, st
 end
