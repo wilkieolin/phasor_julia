@@ -19,7 +19,7 @@ end
 #13 input columns, plus y-local are used to define the input data
 n_in = 14
 #set the oscillator/spiking config
-spk_args = SpikingArgs()
+spk_args = SpikingArgs(leakage=-0.1)
 repeats = 20
 tspan = (0.0, 10.0)
 
