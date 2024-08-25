@@ -184,11 +184,12 @@ function cat_currents(x::CurrentCall, y::CurrentCall; dim::Int)
     return call
 end
 
-function process_sample(x; spk_args::SpikingArgs, tspan::Tuple)
+function process_sample(x; spk_args::SpikingArgs, tspan::Tuple, kwargs...)
     charge, ylocal = x
     x1 = charge_to_current(charge, spk_args=spk_args, tspan=tspan)
     x2 = ylocal_to_current(ylocal, spk_args=spk_args, tspan=tspan)
     xf = cat_currents(x1, x2, dim=1)
+    
     return xf
 end
 
