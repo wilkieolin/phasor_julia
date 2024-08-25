@@ -18,10 +18,6 @@ end
 
 #13 input columns, plus y-local are used to define the input data
 n_in = 14
-#set the oscillator/spiking config
-spk_args = SpikingArgs(leakage=-0.1)
-repeats = 20
-tspan = (0.0, 10.0)
 
 function get_truth(pt, threshold::Real = 0.2)
     return 1 .* (pt .> threshold) .+ 2 .* (pt .< -threshold)
@@ -107,7 +103,7 @@ pmlp_model = Chain(
                         PhasorDense(128 => 3) 
                     )
 
-pmlp_model_spk = Chain(
+pmlp_model_spk(spk_args::SpikingArgs, repeats::Int=repeats) = Chain(
                         BatchNorm(n_in),
                         x -> tanh.(x),
                         MakeSpiking(spk_args, repeats),
