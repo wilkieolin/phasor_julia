@@ -20,6 +20,7 @@ addprocs(n_samples)
     q_test, ylocal_test, pt_test = get_samples(file_pairs[3:3]);
 
     args = Args(batchsize = 128)
+    spk_args = SpikingArgs(leakage = -0.10)
 
     test_loader = DataLoader((q_test, ylocal_test, pt_test), partial=false, batchsize=args.batchsize)
     train_loader = DataLoader((q, ylocal, pt), partial=false, batchsize=args.batchsize)
@@ -32,9 +33,10 @@ addprocs(n_samples)
 
     if type == "ode"
         #models defined in train_classifier.jl
-        ps, st = Lux.setup(rng, ode_model)
+        model = ode_model(spk_args)
+        ps, st = Lux.setup(rng, model)
         psa = ComponentArray(ps)
-        lhist, pst, stt = train_ode(ode_model, psa, st, train_loader, id=seed, epochs=n_epochs)
+        lhist, pst, stt = train_ode(model, psa, st, train_loader, id=seed, epochs=n_epochs)
 
     elseif type == "pmlp"
         ps, st = Lux.setup(rng, pmlp_model)

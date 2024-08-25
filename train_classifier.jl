@@ -185,13 +185,13 @@ function process_sample(x; spk_args::SpikingArgs, tspan::Tuple, kwargs...)
     return xf
 end
 
-ode_model = Chain(PhasorResonant(n_in, spk_args, true),
+ode_model(spk_args::SpikingArgs) = Chain(PhasorResonant(n_in, spk_args, true),
                 x -> mean_phase(x, 1, spk_args=spk_args, offset=0.0, threshold=false),
                 PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
                 )
 
-ode_model_spk = Chain(PhasorResonant(n_in, spk_args, false),
+ode_model_spk(spk_args::SpikingArgs) = Chain(PhasorResonant(n_in, spk_args, false),
                 x -> x,
                 PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
