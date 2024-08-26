@@ -204,7 +204,7 @@ function loss_ode(x, y, model, ps, st, threshold)
     return loss, st
 end
 
-function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1, verbose::Bool = true, kws...)
+function train_ode(model, ps, st, train_loader; spk_args::SpikingArgs, repeats::Int = 10, threshold::Real = 0.2, id::Int=1, verbose::Bool = true, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu
@@ -217,6 +217,7 @@ function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1
     opt_state = Optimisers.setup(Adam(3e-4), ps)
     losses = []
     i = 0
+    tspan = (0.0, spk_args.t_period * repeats)
 
     ## Training
     for epoch in 1:args.epochs

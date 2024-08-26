@@ -3,7 +3,7 @@ n_samples = parse(Int, ARGS[1])
 type_chk = ARGS[2]
 @assert type_chk in ("mlp", "pmlp", "ode") "Unrecognized network type requested"
 
-seeds = collect(43:43+n_samples)
+seeds = collect(43:43 + n_samples - 1)
 addprocs(n_samples)
 
 @everywhere include("train_classifier.jl")
@@ -21,6 +21,7 @@ addprocs(n_samples)
 
     args = Args(batchsize = 128)
     spk_args = SpikingArgs(leakage = -0.10)
+    repeats = 10
 
     test_loader = DataLoader((q_test, ylocal_test, pt_test), partial=false, batchsize=args.batchsize)
     train_loader = DataLoader((q, ylocal, pt), partial=false, batchsize=args.batchsize)
@@ -28,7 +29,6 @@ addprocs(n_samples)
     x, xl, y = first(train_loader)
     n_px = size(x, 2) 
     n_in = n_px + 1
-    sa = SpikingArgs()
     rng = Xoshiro(seed)
 
     if type == "ode"
@@ -36,7 +36,7 @@ addprocs(n_samples)
         model = ode_model(spk_args)
         ps, st = Lux.setup(rng, model)
         psa = ComponentArray(ps)
-        lhist, pst, stt = train_ode(model, psa, st, train_loader, id=seed, epochs=n_epochs)
+        lhist, pst, stt = train_ode(model, psa, st, train_loader, repeats = 10, id=seed, epochs=n_epochs, spk_args = spk_args)
 
     elseif type == "pmlp"
         ps, st = Lux.setup(rng, pmlp_model)
