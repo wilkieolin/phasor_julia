@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.3"
+julia_version = "1.10.4"
 manifest_format = "2.0"
 project_hash = "96605ea6fc536cdd63529c15cda337c7e6cc835a"
 
@@ -2193,7 +2193,7 @@ version = "1.2.1"
 
 [[deps.PhasorNetworks]]
 deps = ["ChainRulesCore", "ComponentArrays", "DifferentialEquations", "Distributions", "Interpolations", "LinearAlgebra", "Lux", "LuxDeviceUtils", "MLDatasets", "MLUtils", "OneHotArrays", "Optimisers", "Random", "SciMLSensitivity", "Statistics", "Zygote"]
-git-tree-sha1 = "9fc4ea96f1275cee29b7cf8bc76d0299aa59ba25"
+git-tree-sha1 = "9cd1325d52e9f1204e405d2656c308741e8b2413"
 repo-rev = "main"
 repo-url = "https://github.com/wilkieolin/PhasorNetworks.jl.git"
 uuid = "c32d742c-e486-48f1-8804-9f6fb4d3f42c"

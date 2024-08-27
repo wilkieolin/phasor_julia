@@ -143,7 +143,7 @@ function interpolate_2D_derivative(t::Real, times::Vector{<:Real}, values::Abstr
     return current
 end
 
-function charge_to_current(values::AbstractArray; spk_args::SpikingArgs, tspan::Tuple)
+function charge_to_current(values::AbstractArray; spk_args::SpikingArgs, tspan::Tuple, clock_amp::Real = 0.01)
     x_tms = range(start=0.0, stop=1.0, length=size(values, 1)) |> collect
     
     function current_fn(t)
@@ -153,7 +153,11 @@ function charge_to_current(values::AbstractArray; spk_args::SpikingArgs, tspan::
         q = mean(q, dims=2)[:,1,:]
     end
 
-    current = LocalCurrent(current_fn, (size(values,2), size(values,4)), 0.0)
+    clock_call = phase_to_current(zeros(size(q,2)), spk_args=spk_args, offset=0.0, tspan=tspan, repeat=false)
+    clock_fn = clock_call.current.current_fn
+    clocked_fn = t -> current_fn(t) .+ clock_amp .* clock_fn(t)
+
+    current = LocalCurrent(clocked_fn, (size(values,2), size(values,4)), 0.0)
     call = CurrentCall(current, spk_args, tspan)
 
     return call
@@ -184,13 +188,24 @@ function cat_currents(x::CurrentCall, y::CurrentCall; dim::Int)
     return call
 end
 
-function process_sample(x; spk_args::SpikingArgs, tspan::Tuple, kwargs...)
+function process_sample(x; spk_args::SpikingArgs, tspan::Tuple, clock_amp::Real = 0.01, kwargs...)
     charge, ylocal = x
-    x1 = charge_to_current(charge, spk_args=spk_args, tspan=tspan)
+    x1 = charge_to_current(charge, spk_args=spk_args, tspan=tspan, clock_amp=clock_amp)
     x2 = ylocal_to_current(ylocal, spk_args=spk_args, tspan=tspan)
     xf = cat_currents(x1, x2, dim=1)
     
     return xf
+end
+
+function data_to_phase(q, yl; spk_args::SpikingArgs, tspan::Tuple, clock_amp::Real = 0.01)
+    x = process_sample((q, yl), spk_args=spk_args, tspan=tspan, clock_amp=clock_amp)
+    ode_front = Chain(PhasorResonant(n_in, spk_args),)
+    rng = Xoshiro(42)
+    ps_ode, st_ode = Lux.setup(rng, ode_front)
+    sol = ode_front(x, ps_ode, st_ode)[1]
+    mp = mean_phase(sol, 1, spk_args=spk_args, offset=0.0, threshold=false)
+    train = solution_to_train(sol, tspan, spk_args=spk_args, offset=0.0)
+    return mp, train
 end
 
 function scale_charge(i::AbstractArray)
