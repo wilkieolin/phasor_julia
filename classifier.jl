@@ -28,6 +28,21 @@ function momentum_to_label(pt, threshold::Real = 0.2)
     return y
 end
 
+function accuracy_phasor(x, y, model_call::Function, threshold::Real)
+    y_truth = get_truth(y, threshold)
+    y_pred = model_call(x)
+    y_labels = predict_quadrature(y_pred) .- 1
+    right = sum(y_truth .== y_labels)
+    return right
+end
+
+function accuracy_phasor_compare(y_pred, y, threshold::Real)
+    y_labels = predict_quadrature(y_pred) .- 1
+    y_truth = get_truth(y, threshold)
+    right = sum(y_truth .== y_labels)
+    return right
+end
+
 ###
 ### Code for conventional multi-layer perceptron
 ###
@@ -185,14 +200,32 @@ function process_sample(x; spk_args::SpikingArgs, tspan::Tuple, kwargs...)
     return xf
 end
 
-ode_model(spk_args::SpikingArgs) = Chain(PhasorResonant(n_in, spk_args, true),
-                x -> mean_phase(x, 1, spk_args=spk_args, offset=0.0, threshold=false),
-                PhasorDenseF32(n_in => 128),
-                PhasorDenseF32(128 => 3)
-                )
+resonant_layer(spk_args::SpikingArgs) = Chain(PhasorResonant(n_in, spk_args),)
 
-ode_model_spk(spk_args::SpikingArgs) = Chain(PhasorResonant(n_in, spk_args, false),
-                x -> x,
+function data_to_phase(q, yl; spk_args::SpikingArgs, tspan::Tuple, clock_amp::Real = 0.01)
+    x = process_sample((q, yl), spk_args=spk_args, tspan=tspan, clock_amp=clock_amp)
+    ode_front = resonant_layer(spk_args)
+
+    #parameters are constant so rng doesn't matter
+    rng = Xoshiro(42)
+    ps_ode, st_ode = Lux.setup(rng, ode_front)
+    sol = ode_front(x, ps_ode, st_ode)[1]
+    mp = mean_phase(sol, 1, spk_args=spk_args, offset=0.0, threshold=false)
+    train = solution_to_train(sol, tspan, spk_args=spk_args, offset=0.0)
+
+    return mp, train
+end
+
+function resonate_on_current(q, ylocal, spk_args::SpikingArgs, tspan::Tuple, clock_amp::Real = 0.01, args)
+    conversion_loader = DataLoader((q, ylocal), partial = false, batchsize=args.batchsize)
+    res = map(x -> data_to_phase(x[1], x[2], spk_args=spk_args, tspan=tspan, clock_amp=0.01), conversion_loader)
+    mean_phase = cat([r[1] for r in res]..., dims=2)
+    test_trains = [r[2] for r in res2]
+
+    return mean_phase, test_trains
+end
+
+ode_model() = Chain(
                 PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
                 )
@@ -204,7 +237,7 @@ function loss_ode(x, y, model, ps, st, threshold)
     return loss, st
 end
 
-function train_ode(model, ps, st, train_loader; spk_args::SpikingArgs, repeats::Int = 10, threshold::Real = 0.2, id::Int=1, verbose::Bool = true, kws...)
+function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1, verbose::Bool = false, kws...)
     args = Args(; kws...) ## Collect options in a struct for convenience
 
     device = cpu
@@ -217,15 +250,13 @@ function train_ode(model, ps, st, train_loader; spk_args::SpikingArgs, repeats::
     opt_state = Optimisers.setup(Adam(3e-4), ps)
     losses = []
     i = 0
-    tspan = (0.0, spk_args.t_period * repeats)
 
     ## Training
     for epoch in 1:args.epochs
         print("Epoch ", epoch)
         epoch_losses = []
-        for (x, xl, y) in train_loader
-            x = process_sample((x, xl), spk_args=spk_args, tspan=tspan)
-            (loss_val, st), gs = withgradient(p -> loss_ode(x, y, model, p, st, threshold), ps)
+        for (x, y) in train_loader
+            (loss_val, st), gs = withgradient(p -> loss(x, y, model, p, st, threshold), ps)
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
             if verbose
@@ -234,11 +265,17 @@ function train_ode(model, ps, st, train_loader; spk_args::SpikingArgs, repeats::
         end
         append!(losses, epoch_losses)
         println(" mean loss ", string(mean(epoch_losses)))
-        filename = joinpath("parameters", "ode_id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
-        jldsave(filename; params=ps, state=st)
+        #filename = joinpath("parameters", "id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
+        #jldsave(filename; params=ps, state=st)
     end
 
-    jldsave(joinpath("parameters", "ode_losses_id") * string(id) * ".jld2"; losses = losses)
-
     return losses, ps, st
+end
+
+function test_ode_static(model, ps, st, test_loader)
+    println("Testing ODE model (static)...")
+    yth = [model(x[1], ps, st)[1] for x in test_loader]
+    pt = cat([x[2] for x in test_loader]..., dims=1)
+    
+
 end
