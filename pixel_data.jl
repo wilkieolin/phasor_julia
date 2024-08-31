@@ -153,7 +153,7 @@ function charge_to_current(values::AbstractArray; spk_args::SpikingArgs, tspan::
         q = mean(q, dims=2)[:,1,:]
     end
 
-    clock_call = phase_to_current(zeros(size(q,2)), spk_args=spk_args, offset=0.0, tspan=tspan, repeat=false)
+    clock_call = phase_to_current(zeros(size(values,2)), spk_args=spk_args, offset=0.0, tspan=tspan, repeat=false)
     clock_fn = clock_call.current.current_fn
     clocked_fn = t -> current_fn(t) .+ clock_amp .* clock_fn(t)
 
