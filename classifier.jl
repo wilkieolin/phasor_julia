@@ -6,6 +6,7 @@ using MLUtils: DataLoader
 using Random: Xoshiro
 using ChainRulesCore: ignore_derivatives
 using Statistics: mean
+using QuadGK: quadgk
 
 include("pixel_data.jl")
 
@@ -41,6 +42,13 @@ function accuracy_phasor_compare(y_pred, y, threshold::Real)
     y_truth = get_truth(y, threshold)
     right = sum(y_truth .== y_labels)
     return right
+end
+
+function calc_auroc(yh, pt)
+    roc_spk = tpr_fpr(yh, pt)
+    roc_fn_spk = linear_interpolation(average_duplicate_knots(roc_spk[2], roc_spk[1])...);
+    auc, _ = quadgk(roc_fn_spk, 0.0, 1.0)
+    return auc
 end
 
 ###
@@ -216,8 +224,8 @@ function data_to_phase(q, yl; spk_args::SpikingArgs, tspan::Tuple, clock_amp::Re
     return mp, train
 end
 
-function resonate_on_current(q, ylocal, spk_args::SpikingArgs, tspan::Tuple, clock_amp::Real = 0.01, args)
-    conversion_loader = DataLoader((q, ylocal), partial = false, batchsize=args.batchsize)
+function resonate_on_current(q, ylocal, spk_args::SpikingArgs, tspan::Tuple, batchsize::Int, clock_amp::Real = 0.01)
+    conversion_loader = DataLoader((q, ylocal), partial = false, batchsize=batchsize)
     res = map(x -> data_to_phase(x[1], x[2], spk_args=spk_args, tspan=tspan, clock_amp=0.01), conversion_loader)
     mean_phase = cat([r[1] for r in res]..., dims=2)
     test_trains = [r[2] for r in res2]
@@ -256,7 +264,7 @@ function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1
         print("Epoch ", epoch)
         epoch_losses = []
         for (x, y) in train_loader
-            (loss_val, st), gs = withgradient(p -> loss(x, y, model, p, st, threshold), ps)
+            (loss_val, st), gs = withgradient(p -> loss_ode(x, y, model, p, st, threshold), ps)
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
             if verbose
@@ -272,10 +280,28 @@ function train_ode(model, ps, st, train_loader; threshold::Real = 0.2, id::Int=1
     return losses, ps, st
 end
 
+function test_ode(model, ps, st, test_loader, test_trains; spk_args::SpikingArgs, tspan::Tuple)
+    auroc_static = test_ode_static(model, ps, st, test_loader)
+    auroc_dynamic = maximum(test_ode_dynamic(model, ps, st, test_trains, test_loader, spk_args=spk_args, tspan=tspan))
+    println("S: " * string(auroc_static) * " D: " * string(auroc_dynamic))
+    return auroc_static, auroc_dynamic
+end
+
 function test_ode_static(model, ps, st, test_loader)
     println("Testing ODE model (static)...")
-    yth = [model(x[1], ps, st)[1] for x in test_loader]
+    yth = cat([model(x[1], ps, st)[1] for x in test_loader]..., dims=2)
     pt = cat([x[2] for x in test_loader]..., dims=1)
-    
+    auroc = calc_auroc(yth, pt)
+    return auroc
+end
 
+function test_ode_dynamic(model, ps, st, test_trains, test_loader; spk_args::SpikingArgs, tspan::Tuple)
+    println("Testing ODE model (dynamic)...")
+    test_calls = [SpikingCall(t, spk_args, tspan) for t in test_trains];
+    yspk = [model(c, ps, st)[1] for c in test_calls]
+    yth = cat([train_to_phase(st) for st in yspk]..., dims=3)
+    pt = cat([x[2] for x in test_loader]..., dims=1)
+    #map the auroc calculation for each cycle of the spiking network
+    aurocs = map(x -> calc_auroc(x, pt), eachslice(yth, dims=1))
+    return aurocs
 end
