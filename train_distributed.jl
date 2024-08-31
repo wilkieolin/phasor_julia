@@ -4,10 +4,11 @@ Pkg.activate(".")
 n_samples = parse(Int, ARGS[1])
 seeds = collect(43:43 + n_samples - 1)
 type_chk = ARGS[2]
+len(ARGS) > 2 ? n_procs = parse(Int, ARGS[3]) : n_procs = n_samples
 @assert type_chk in ("mlp", "pmlp", "ode") "Unrecognized network type requested"
 type = type_chk
 
-addprocs(n_samples)
+addprocs(n_procs)
 
 @everywhere include("classifier.jl")
 
