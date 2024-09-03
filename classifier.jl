@@ -54,7 +54,7 @@ end
 ###
 ### Code for conventional multi-layer perceptron
 ###
-mlp_model = Chain(
+mlp_model = Chain(  x -> process_inputs_mlp(x[1], x[2]),
                     BatchNorm(n_in),
                     x -> tanh.(x),
                     Dense(n_in => 128, relu),
@@ -77,7 +77,7 @@ end
 logitcrossentropy(y_pred, y) = mean(-1 * sum(y .* logsoftmax(y_pred); dims=1))
 
 function loss_mlp(x, xl, y, model, ps, st, threshold)
-    y_pred, st = model(process_inputs_mlp(x, xl), ps, st)
+    y_pred, st = model((x, xl), ps, st)
     y = momentum_to_label(y, threshold)
     loss = logitcrossentropy(y_pred, y)
     return loss, st
@@ -107,42 +107,27 @@ function train_mlp(model, ps, st, train_loader; threshold::Real = 0.2, id::Int, 
         end
         append!(losses, epoch_losses)
         println(" mean loss ", string(mean(epoch_losses)))
-        filename = joinpath("parameters", "mlp_id_") * string(id) * "_epoch_" * string(args.epochs) * ".jld2"
-        jldsave(filename; params=ps, state=st)
+        
     end
 
-    jldsave(joinpath("parameters", "mlp_losses_id") * string(id) * ".jld2"; losses = losses)
+    #filename = joinpath("parameters", "mlp_id_") * string(id) * ".jld2"
+    #jldsave(filename; params=ps, state=st)
+    #jldsave(joinpath("parameters", "mlp_losses_id") * string(id) * ".jld2"; losses = losses)
     return losses, ps, st
+end
+
+function test_mlp_static(model, ps, st, test_loader)
+    println("Testing PMLP model (static)...")
+    yth = cat([model((x[1], x[2]), ps, st)[1] for x in test_loader]..., dims=2)
+    pt = cat([x[3] for x in test_loader]..., dims=1)
+    auroc = calc_auroc(yth, pt)
+    return auroc
 end
 
 
 ###
 ### Code for phasor-based mlp
 ###
-pmlp_model = Chain(
-                        BatchNorm(n_in),
-                        x -> tanh.(x),
-                        PhasorDense(n_in => 128),
-                        PhasorDense(128 => 3) 
-                    )
-
-pmlp_model_spk(spk_args::SpikingArgs, repeats::Int=repeats) = Chain(
-                        BatchNorm(n_in),
-                        x -> tanh.(x),
-                        MakeSpiking(spk_args, repeats),
-                        PhasorDense(n_in => 128),
-                        PhasorDense(128 => 3) 
-                    )                    
-
-function convert_pmlp_params(pmlp_ps)
-    # Add a dummy layer of params for the make_spiking layer
-    spk_ps = (layer_1 = pmlp_ps.layer_1, 
-            layer_2 = pmlp_ps.layer_2,
-            layer_3 = NamedTuple(),
-            layer_4 = pmlp_ps.layer_3,
-            layer_5 = pmlp_ps.layer_4)
-    return spk_ps
-end      
 
 function process_inputs_pmlp(x, y_local)
     x = scale_charge(x)
@@ -156,8 +141,27 @@ function process_inputs_pmlp(x, y_local)
     return x
 end
 
-function loss_pmlp(x, xl, y, model, ps, st, threshold)
-    y_pred, st = model(process_inputs_pmlp(x, xl), ps, st)
+pmlp_model = Chain(
+                        x -> process_inputs_pmlp(x[1], x[2]),
+                        BatchNorm(n_in),
+                        x -> tanh.(x),
+                        x -> x,
+                        PhasorDense(n_in => 128),
+                        PhasorDense(128 => 3) 
+                    )
+
+pmlp_model_spk(spk_args::SpikingArgs, repeats::Int=repeats) = Chain(
+                        x -> process_inputs_pmlp(x[1], x[2]),
+                        BatchNorm(n_in),
+                        x -> tanh.(x),
+                        MakeSpiking(spk_args, repeats),
+                        PhasorDense(n_in => 128),
+                        PhasorDense(128 => 3) 
+                    )                    
+
+
+function loss_pmlp(x, y, model, ps, st, threshold)
+    y_pred, st = model(x, ps, st)
     y = momentum_to_label(y, threshold)
     loss = quadrature_loss(y_pred, y) |> mean
     return loss, st
@@ -181,18 +185,43 @@ function train_pmlp(model, ps, st, train_loader; threshold::Real = 0.2, id::Int,
         print("Epoch ", epoch)
         epoch_losses = []
         for (x, xl, y) in train_loader
-            (loss_val, st), gs = withgradient(p -> loss_pmlp(x, xl, y, model, p, st, threshold), ps)
+            (loss_val, st), gs = withgradient(p -> loss_pmlp((x, xl), y, model, p, st, threshold), ps)
             append!(epoch_losses, loss_val)
             opt_state, ps = Optimisers.update(opt_state, ps, gs[1]) ## update parameters
         end
         append!(losses, epoch_losses)
         println(" mean loss ", string(mean(epoch_losses)))
-        filename = joinpath("parameters", "pmlp_id_") * string(id) * "_epoch_" * string(epoch) * ".jld2"
-        jldsave(filename; params=ps, state=st)
     end
 
-    jldsave(joinpath("parameters", "pmlp_losses_id") * string(id) * ".jld2"; losses = losses)
+    #filename = joinpath("parameters", "pmlp_id_") * string(id) * ".jld2"
+    #jldsave(filename; params=ps, state=st)
+    #jldsave(joinpath("parameters", "pmlp_losses_id") * string(id) * ".jld2"; losses = losses)
     return losses, ps, st
+end
+
+function test_pmlp(ps, st, test_loader; spk_args::SpikingArgs, repeats::Int=10)
+    auroc_static = test_pmlp_static(pmlp_model, ps, st, test_loader)
+    auroc_dynamic = maximum(test_pmlp_dynamic(pmlp_model_spk(spk_args, repeats), ps, st, test_loader))
+    println("S: " * string(auroc_static) * " D: " * string(auroc_dynamic))
+    return auroc_static, auroc_dynamic
+end
+
+function test_pmlp_static(model, ps, st, test_loader)
+    println("Testing PMLP model (static)...")
+    yth = cat([model((x[1], x[2]), ps, st)[1] for x in test_loader]..., dims=2)
+    pt = cat([x[3] for x in test_loader]..., dims=1)
+    auroc = calc_auroc(yth, pt)
+    return auroc
+end
+
+function test_pmlp_dynamic(model, ps, st, test_loader)
+    println("Testing PMLP model (dynamic)...")
+    yspk = [model((x[1], x[2]), ps, st) for x in test_loader]
+    yth = cat([train_to_phase(st) for st in yspk]..., dims=3)
+    pt = cat([x[3] for x in test_loader]..., dims=1)
+    #map the auroc calculation for each cycle of the spiking network
+    aurocs = map(x -> calc_auroc(x, pt), eachslice(yth, dims=1))
+    return aurocs
 end
 
 ###
@@ -224,11 +253,22 @@ function data_to_phase(q, yl; spk_args::SpikingArgs, tspan::Tuple, clock_amp::Re
     return mp, train
 end
 
-function resonate_on_current(q, ylocal, spk_args::SpikingArgs, tspan::Tuple, batchsize::Int, clock_amp::Real = 0.01)
+function resonate_on_current(q, ylocal, spk_args::SpikingArgs, tspan::Tuple, batchsize::Int, clock_amp::Real = 0.01, parallel::Bool = false, n::Int=-1)
+    #reduce the data to the requested amount
+    if n > 0
+        q = q[:,:,:,1:n]
+        ylocal = ylocal[1:n]
+    end
+
     conversion_loader = DataLoader((q, ylocal), partial = false, batchsize=batchsize)
-    res = map(x -> data_to_phase(x[1], x[2], spk_args=spk_args, tspan=tspan, clock_amp=0.01), conversion_loader)
+    #pmap if requested
+    if parallel
+        res = pmap(x -> data_to_phase(x[1], x[2], spk_args=spk_args, tspan=tspan, clock_amp=0.01), conversion_loader)
+    else
+        res = map(x -> data_to_phase(x[1], x[2], spk_args=spk_args, tspan=tspan, clock_amp=0.01), conversion_loader)
+    end
     mean_phase = cat([r[1] for r in res]..., dims=2)
-    test_trains = [r[2] for r in res2]
+    test_trains = [r[2] for r in res]
 
     return mean_phase, test_trains
 end

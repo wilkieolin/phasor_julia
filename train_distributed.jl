@@ -1,5 +1,4 @@
-using Distributed, Pkg
-Pkg.activate(".")
+using Distributed
 
 n_samples = parse(Int, ARGS[1])
 seeds = collect(43:43 + n_samples - 1)
@@ -16,6 +15,7 @@ args = Args(batchsize = 128)
 @everywhere n_epochs = 10
 @everywhere ode_spk_args = SpikingArgs(leakage=-0.2, solver=Tsit5())
 @everywhere ode_tspan = (0.0, 25.0)
+@everywhere n_test = 10000
 
 @everywhere normal_spk_args = SpikingArgs()
 @everywhere normal_tspan = (0.0, 10.0)
@@ -24,20 +24,22 @@ args = Args(batchsize = 128)
 # Check if the data necessary for ODE training and testing is present, 
 # generate if not (make sure workers don't end up racing on this)
 # """
-@everywhere function check_ode_data(ode_tspan::Tuple, args::Args)
+@everywhere function check_ode_data(ode_tspan::Tuple, args::Args, parallel::Bool=false)
     storage_dir = "data"
     test_file = joinpath(storage_dir, "test_phase.jld2")
     train_file = joinpath(storage_dir, "train_phase.jld2")
     data_dir = "pixel_data/"
     file_pairs = get_dataset(data_dir)
     clock_amp = 0.01
+    global n_test
     batchsize = args.batchsize
-    ode_spk_args = SpikingArgs(leakage=-0.2, solver=Tsit5())
+    #lower threshold for resonating layer
+    res_spk_args = SpikingArgs(leakage=-0.2, solver=Tsit5(), threshold=1e-5)
 
     if !isfile(test_file)
         @info "Generating test ODE data..."
         q_test, ylocal_test, pt_test = get_samples(file_pairs[3:3]);
-        test_mp, test_train = resonate_on_current(q_test, ylocal_test, ode_spk_args, ode_tspan, batchsize, clock_amp)
+        test_mp, test_train = resonate_on_current(q_test, ylocal_test, res_spk_args, ode_tspan, batchsize, clock_amp, parallel, n_test)
         #cut down pt to what matches the test train
         pt_test = pt_test[1:size(test_mp,2)]
         save_object(test_file, Dict("phase" => test_mp, "momentum" => pt_test, "spikes" => test_train))
@@ -46,7 +48,7 @@ args = Args(batchsize = 128)
     if !isfile(train_file)
         @info "Generating training ODE data..."
         q, ylocal, pt = get_samples(file_pairs[1:2]);
-        x_mp, _ = resonate_on_current(q, ylocal, ode_spk_args, ode_tspan, batchsize, clock_amp)
+        x_mp, _ = resonate_on_current(q, ylocal, res_spk_args, ode_tspan, batchsize, clock_amp, parallel)
         #cut down momentum to what matches x_mp
         pt = pt[1:size(x_mp,2)]
         save_object(train_file, Dict("phase" => x_mp, "momentum" => pt))
@@ -63,12 +65,14 @@ end
     n_in = n_px + 1
     rng = Xoshiro(seed)
     global ode_tspan
+    global n_test
 
     if type == "ode"
         tspan = ode_tspan
+        global ode_spk_args
 
         #load data from the stored phasor representation
-        test_file, train_file = check_ode_data(tspan, args)
+        test_file, train_file = check_ode_data(tspan, args, false)
         #training data
         train_data = load_object(train_file)
         x_mp = train_data["phase"]
@@ -91,38 +95,60 @@ end
         result = Dict("loss" => lhist, "params" => pst, "state" => stt)
 
         #test the model
-        auroc_static, auroc_dynamic = test_ode(model, pst, stt, test_loader, train_test, spk_args=spk_args, tspan=tspan)
+        auroc_static, auroc_dynamic = test_ode(model, pst, stt, test_loader, train_test, spk_args=ode_spk_args, tspan=tspan)
         result["auroc static"] = auroc_static
         result["auroc dynamic"] = auroc_dynamic 
 
         #save the results
-        filename = reduce(*, [joinpath("parameters", "final_id_"), string(seed), ".jld2"])
+        filename = reduce(*, [joinpath("parameters", "ode_id_"), string(seed), ".jld2"])
         save_object(filename, result)
     else
         #set parameters
-        spk_args = SpikingArgs(leakage = -0.10, threshold=1e-5)
+        global normal_spk_args
+        spk_args = normal_spk_args
         repeats = 10
 
         #load data from the direct input files
         q, ylocal, pt = get_samples(file_pairs[1:2]);
         q_test, ylocal_test, pt_test = get_samples(file_pairs[3:3]);
         train_loader = DataLoader((q, ylocal, pt), partial=false, batchsize=args.batchsize)
+        test_loader = DataLoader((q_test[:,:,:,1:n_test], ylocal_test[1:n_test], pt_test[1:n_test]), partial = false, batchsize=args.batchsize)
 
         if type == "pmlp"
             ps, st = Lux.setup(rng, pmlp_model)
             model = pmlp_model
             lhist, pst, stt = train_pmlp(pmlp_model, ps, st, train_loader, id=seed, epochs=n_epochs)
+            result = Dict("loss" => lhist, "params" => pst, "state" => stt)
+
+            #test the model
+            auroc_static, auroc_dynamic = test_pmlp(pst, stt, test_loader, spk_args=spk_args, repeats=repeats)
+            result["auroc static"] = auroc_static
+            result["auroc dynamic"] = auroc_dynamic 
+
+            #save the results
+            filename = reduce(*, [joinpath("parameters", "pmlp_id_"), string(seed), ".jld2"])
+            save_object(filename, result)
+
         else # type is "mlp"
             ps, st = Lux.setup(rng, mlp_model)
             model = mlp_model
-            lhist, pst, stt = train_mlp(mlp_model, ps, st, train_loader, id=seed, epochs=n_epochs) 
+            lhist, pst, stt = train_mlp(mlp_model, ps, st, train_loader, id=seed, epochs=n_epochs)
+            result = Dict("loss" => lhist, "params" => pst, "state" => stt)
+
+            #test the model
+            auroc_static = test_mlp_static(pst, stt, test_loader)
+            result["auroc static"] = auroc_static
+
+            #save the results
+            filename = reduce(*, [joinpath("parameters", "mlp_id_"), string(seed), ".jld2"])
+            save_object(filename, result)
         end
     end
 
     return model, pst, stt
 end
 
-check_ode_data(ode_tspan, args)
+check_ode_data(ode_tspan, args, true)
 exec = pmap(x -> exec_training(type, x, args), seeds)
 
 for i in workers()
