@@ -116,11 +116,12 @@ function train_mlp(model, ps, st, train_loader; threshold::Real = 0.2, id::Int, 
     return losses, ps, st
 end
 
-function test_mlp_static(model, ps, st, test_loader)
+function test_mlp_static(ps, st, test_loader)
     println("Testing PMLP model (static)...")
-    yth = cat([model((x[1], x[2]), ps, st)[1] for x in test_loader]..., dims=2)
+    yth = cat([mlp_model((x[1], x[2]), ps, st)[1] for x in test_loader]..., dims=2)
     pt = cat([x[3] for x in test_loader]..., dims=1)
     auroc = calc_auroc(yth, pt)
+    print("S" * string(auroc))
     return auroc
 end
 
