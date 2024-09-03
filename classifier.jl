@@ -216,7 +216,7 @@ end
 
 function test_pmlp_dynamic(model, ps, st, test_loader)
     println("Testing PMLP model (dynamic)...")
-    yspk = [model((x[1], x[2]), ps, st) for x in test_loader]
+    yspk = [model((x[1], x[2]), ps, st)[1] for x in test_loader]
     yth = cat([train_to_phase(st) for st in yspk]..., dims=3)
     pt = cat([x[3] for x in test_loader]..., dims=1)
     #map the auroc calculation for each cycle of the spiking network
