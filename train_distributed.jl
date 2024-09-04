@@ -24,38 +24,7 @@ args = Args(batchsize = 128)
 # Check if the data necessary for ODE training and testing is present, 
 # generate if not (make sure workers don't end up racing on this)
 # """
-@everywhere function check_ode_data(ode_tspan::Tuple, args::Args, parallel::Bool=false)
-    storage_dir = "data"
-    test_file = joinpath(storage_dir, "test_phase.jld2")
-    train_file = joinpath(storage_dir, "train_phase.jld2")
-    data_dir = "pixel_data/"
-    file_pairs = get_dataset(data_dir)
-    clock_amp = 0.01
-    global n_test
-    batchsize = args.batchsize
-    #lower threshold for resonating layer
-    res_spk_args = SpikingArgs(leakage=-0.2, solver=Tsit5(), threshold=1e-5)
-
-    if !isfile(test_file)
-        @info "Generating test ODE data..."
-        q_test, ylocal_test, pt_test = get_samples(file_pairs[3:3]);
-        test_mp, test_train = resonate_on_current(q_test, ylocal_test, res_spk_args, ode_tspan, batchsize, clock_amp, parallel, n_test)
-        #cut down pt to what matches the test train
-        pt_test = pt_test[1:size(test_mp,2)]
-        save_object(test_file, Dict("phase" => test_mp, "momentum" => pt_test, "spikes" => test_train))
-    end
-    
-    if !isfile(train_file)
-        @info "Generating training ODE data..."
-        q, ylocal, pt = get_samples(file_pairs[1:2]);
-        x_mp, _ = resonate_on_current(q, ylocal, res_spk_args, ode_tspan, batchsize, clock_amp, parallel)
-        #cut down momentum to what matches x_mp
-        pt = pt[1:size(x_mp,2)]
-        save_object(train_file, Dict("phase" => x_mp, "momentum" => pt))
-    end
-
-    return test_file, train_file
-end
+@everywhere 
 
 @everywhere function exec_training(type::String, seed::Int, args::Args)
     data_dir = "pixel_data/"
@@ -72,7 +41,7 @@ end
         global ode_spk_args
 
         #load data from the stored phasor representation
-        test_file, train_file = check_ode_data(tspan, args, false)
+        test_file, train_file = check_ode_data(tspan, args, false, n_test = n_test)
         #training data
         train_data = load_object(train_file)
         x_mp = train_data["phase"]
@@ -148,7 +117,7 @@ end
     return model, pst, stt
 end
 
-check_ode_data(ode_tspan, args, true)
+check_ode_data(ode_tspan, args, true, n_test = n_test)
 exec = pmap(x -> exec_training(type, x, args), seeds)
 
 for i in workers()

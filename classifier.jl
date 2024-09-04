@@ -274,6 +274,42 @@ function resonate_on_current(q, ylocal, spk_args::SpikingArgs, tspan::Tuple, bat
     return mean_phase, test_trains
 end
 
+function check_ode_data(ode_tspan::Tuple, 
+                        args::Args, 
+                        parallel::Bool=false; 
+                        clock_amp::Real = 0.01, 
+                        storage_dir::String = "data",
+                        data_dir::String = "pixel_data/",
+                        n_test::Int = 10000)
+
+    test_file = joinpath(storage_dir, "test_phase.jld2")
+    train_file = joinpath(storage_dir, "train_phase.jld2")
+    file_pairs = get_dataset(data_dir)
+    batchsize = args.batchsize
+    #lower threshold for resonating layer
+    res_spk_args = SpikingArgs(leakage=-0.2, solver=Tsit5(), threshold=1e-5)
+
+    if !isfile(test_file)
+    @info "Generating test ODE data..."
+    q_test, ylocal_test, pt_test = get_samples(file_pairs[3:3]);
+    test_mp, test_train = resonate_on_current(q_test, ylocal_test, res_spk_args, ode_tspan, batchsize, clock_amp, parallel, n_test)
+    #cut down pt to what matches the test train
+    pt_test = pt_test[1:size(test_mp,2)]
+    save_object(test_file, Dict("phase" => test_mp, "momentum" => pt_test, "spikes" => test_train))
+    end
+
+    if !isfile(train_file)
+    @info "Generating training ODE data..."
+    q, ylocal, pt = get_samples(file_pairs[1:2]);
+    x_mp, _ = resonate_on_current(q, ylocal, res_spk_args, ode_tspan, batchsize, clock_amp, parallel)
+    #cut down momentum to what matches x_mp
+    pt = pt[1:size(x_mp,2)]
+    save_object(train_file, Dict("phase" => x_mp, "momentum" => pt))
+    end
+
+    return test_file, train_file
+end
+
 ode_model() = Chain(
                 PhasorDenseF32(n_in => 128),
                 PhasorDenseF32(128 => 3)
