@@ -14,17 +14,11 @@ addprocs(n_procs)
 args = Args(batchsize = 128)
 @everywhere n_epochs = 10
 @everywhere ode_spk_args = SpikingArgs(leakage=-0.2, solver=Tsit5())
-@everywhere ode_tspan = (0.0, 25.0)
+@everywhere ode_tspan = (0.0, 15.0)
 @everywhere n_test = 10000
 
 @everywhere normal_spk_args = SpikingArgs()
 @everywhere normal_tspan = (0.0, 10.0)
-
-# """
-# Check if the data necessary for ODE training and testing is present, 
-# generate if not (make sure workers don't end up racing on this)
-# """
-@everywhere 
 
 @everywhere function exec_training(type::String, seed::Int, args::Args)
     data_dir = "pixel_data/"
@@ -57,7 +51,7 @@ args = Args(batchsize = 128)
         println(test_loader)
 
         #models defined in classifier.jl
-        model = ode_model()
+        model = ode_model
         ps, st = Lux.setup(rng, model)
         psa = ComponentArray(ps)
         lhist, pst, stt = train_ode(model, psa, st, train_loader, id=seed, epochs=n_epochs)
