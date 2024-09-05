@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "24f9da7ecad3db8a6ebad0232140c10da104799d"
+project_hash = "55cfe3600819b73580d2d0c07914c6111693f7db"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "99a6f5d0ce1c7c6afdb759daa30226f71c54f6b0"
@@ -260,6 +260,12 @@ version = "1.0.8+1"
 git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 version = "0.5.0"
+
+[[deps.CMAEvolutionStrategy]]
+deps = ["Dates", "LinearAlgebra", "Printf", "Random", "Statistics"]
+git-tree-sha1 = "6bf0985be2c5ea58305d2d04e336684f64fdc12a"
+uuid = "8d3b24bd-414e-49e0-94fb-163cc3a3e411"
+version = "0.2.6"
 
 [[deps.CPUSummary]]
 deps = ["CpuId", "IfElse", "PrecompileTools", "Static"]
@@ -2390,6 +2396,12 @@ version = "1.5.0"
     Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
     Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
+[[deps.OptimizationCMAEvolutionStrategy]]
+deps = ["CMAEvolutionStrategy", "Optimization", "Reexport"]
+git-tree-sha1 = "347e7cd1a67fd38be1083c4164be1404fc1dbd49"
+uuid = "bd407f91-200f-4536-9381-e4ba712f53f8"
+version = "0.2.1"
+
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "6703a85cb3781bd5909d48730a67205f3f31a575"
@@ -2646,7 +2658,7 @@ version = "1.2.1"
 
 [[deps.PhasorNetworks]]
 deps = ["ChainRulesCore", "ComponentArrays", "DifferentialEquations", "Distributions", "Interpolations", "LinearAlgebra", "Lux", "LuxDeviceUtils", "LuxLib", "MLDatasets", "MLUtils", "OneHotArrays", "Optimisers", "Random", "SciMLSensitivity", "Statistics", "Zygote"]
-git-tree-sha1 = "819634fe0a044debc6f6d8b38af861526d81386f"
+git-tree-sha1 = "76487a62d62dbc2225c6bc5fa43a302d2eced85f"
 repo-rev = "main"
 repo-url = "https://github.com/wilkieolin/PhasorNetworks.jl.git"
 uuid = "c32d742c-e486-48f1-8804-9f6fb4d3f42c"
