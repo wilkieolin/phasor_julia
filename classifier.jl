@@ -315,9 +315,14 @@ function check_ode_data(ode_tspan::Tuple,
 end
 
 ode_model = Chain(
-                PhasorDenseF32(n_in => 128),
-                PhasorDenseF32(128 => 3)
+                PhasorDenseF32(n_in => 128, phase_bias=false),
+                PhasorDenseF32(128 => 3, phase_bias=false)
                 )
+
+ode_model_spk = Chain(
+            PhasorDenseF32(n_in => 128, phase_bias=false),
+            PhasorDenseF32(128 => 3, return_solution=true, phase_bias=false)
+            )
 
 function loss_ode(x, y, model, ps, st, threshold)
     y_pred, st = model(x, ps, st)
@@ -379,10 +384,10 @@ end
 function test_ode_dynamic(model, ps, st, test_trains, test_loader; spk_args::SpikingArgs, tspan::Tuple)
     println("Testing ODE model (dynamic)...")
     test_calls = [SpikingCall(t, spk_args, tspan) for t in test_trains];
-    yspk = [model(c, ps, st)[1] for c in test_calls]
-    yth = cat([train_to_phase(st) for st in yspk]..., dims=3)
+    ysol = [model_spk(c, ps, st)[1] for c in test_calls]
+    yth = cat([solution_to_phase(st, spk_args=spk_args, final_t=false, offset=0.5) for st in yspk]..., dims=2)
     pt = cat([x[2] for x in test_loader]..., dims=1)
     #map the auroc calculation for each cycle of the spiking network
-    aurocs = map(x -> calc_auroc(x, pt), eachslice(yth, dims=1))
+    aurocs = map(x -> calc_auroc(x, pt), eachslice(yth, dims=2))
     return aurocs
 end

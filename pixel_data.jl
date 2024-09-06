@@ -224,26 +224,29 @@ function accuracy(x, xl, y, model, ps, st, threshold::Real)
     return right
 end
 
-function confusion_matrix(prediction, truth, threshold::Real)
+function confusion_matrix(prediction, truth, threshold::Real, quadrature::Bool=true)
     truth = hcat(truth .== 1, truth .== 0)
-    prediction = hcat(prediction .> threshold, prediction .<= threshold)
+    if quadrature
+        prediction = hcat(prediction .> threshold, prediction .<= threshold)
+    else
+        prediction = hcat(prediction .> threshold, prediction .<= threshold)
+    end
 
     confusion = truth' * prediction
     return confusion
 end
 
-function OvR_matrices(predictions, labels, threshold::Real)
+function OvR_matrices(predictions, labels, threshold::Real, quadrature::Bool)
     #get the confusion matrix for each class verus the rest
-    mats = diag([confusion_matrix(ys, ts, threshold) for ys in eachslice(predictions, dims=1), ts in eachslice(labels, dims=1)])
+    mats = diag([confusion_matrix(ys, ts, threshold, quadrature) for ys in eachslice(predictions, dims=1), ts in eachslice(labels, dims=1)])
     return mats
 end
 
-function tpr_fpr(prediction, truth, threshold::Real = 0.2, points::Int = 201, epsilon::Real = 0.01)
+function tpr_fpr(prediction, truth, threshold::Real = 0.2, points::Int = 201, epsilon::Real = 0.01, quadrature::Bool=true)
     labels = momentum_to_label(truth, threshold)
     test_points = range(start = 5.0, stop = -5.0, length = points)
 
-    
-    fn = x -> sum(OvR_matrices(prediction, labels, x))
+    fn = x -> sum(OvR_matrices(prediction, labels, x, quadrature))
     confusion = cat(fn.(test_points)..., dims=3)
 
     classifications = dropdims(sum(confusion, dims=2), dims=2)

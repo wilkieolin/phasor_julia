@@ -2658,7 +2658,7 @@ version = "1.2.1"
 
 [[deps.PhasorNetworks]]
 deps = ["ChainRulesCore", "ComponentArrays", "DifferentialEquations", "Distributions", "Interpolations", "LinearAlgebra", "Lux", "LuxDeviceUtils", "LuxLib", "MLDatasets", "MLUtils", "OneHotArrays", "Optimisers", "Random", "SciMLSensitivity", "Statistics", "Zygote"]
-git-tree-sha1 = "76487a62d62dbc2225c6bc5fa43a302d2eced85f"
+git-tree-sha1 = "26349e4f82513ee5dc2ef840274bc68121ac27a8"
 repo-rev = "main"
 repo-url = "https://github.com/wilkieolin/PhasorNetworks.jl.git"
 uuid = "c32d742c-e486-48f1-8804-9f6fb4d3f42c"
