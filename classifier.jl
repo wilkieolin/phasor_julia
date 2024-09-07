@@ -375,7 +375,7 @@ end
 
 function test_ode_static(model, ps, st, test_loader)
     println("Testing ODE model (static)...")
-    yth = cat([model(x[1], ps, st)[1] for x in test_loader]..., dims=2)
+    yth = cat([ode_model(x[1], ps, st)[1] for x in test_loader]..., dims=2)
     pt = cat([x[2] for x in test_loader]..., dims=1)
     auroc = calc_auroc(yth, pt)
     return auroc
@@ -384,7 +384,7 @@ end
 function test_ode_dynamic(model, ps, st, test_trains, test_loader; spk_args::SpikingArgs, tspan::Tuple)
     println("Testing ODE model (dynamic)...")
     test_calls = [SpikingCall(t, spk_args, tspan) for t in test_trains];
-    ysol = [model_spk(c, ps, st)[1] for c in test_calls]
+    ysol = [ode_model_spk(c, ps, st)[1] for c in test_calls]
     yth = cat([solution_to_phase(st, spk_args=spk_args, final_t=false, offset=0.5) for st in yspk]..., dims=2)
     pt = cat([x[2] for x in test_loader]..., dims=1)
     #map the auroc calculation for each cycle of the spiking network
