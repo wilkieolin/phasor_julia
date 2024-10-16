@@ -163,7 +163,7 @@ function charge_to_current(values::AbstractArray; spk_args::SpikingArgs, tspan::
     return call
 end
 
-function ylocal_to_current(y_local::AbstractArray; spk_args::SpikingArgs, tspan::Tuple, sigma::Real = 9.0, y_range::Real = 32.5)
+function ylocal_to_current(y_local::AbstractArray; spk_args::SpikingArgs, tspan::Tuple, y_range::Real = 32.5)
     y_local /= y_range
     phases = (y_local ./ 2.0) .+ 0.5
     phases = reshape(phases, (1, :))
